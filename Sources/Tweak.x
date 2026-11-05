@@ -7,6 +7,8 @@ static const NSInteger WTInputGlassTag = 0x57544947;
 static char WTOriginalHostBackgroundKey;
 static char WTOriginalHostTransformKey;
 static char WTOriginalButtonHiddenKey;
+static char WTOriginalBackdropBackgroundKey;
+static char WTOriginalIMEBackgroundKey;
 static BOOL WTInputBool(NSString *key, BOOL fallback) {
     id value = [NSUserDefaults.standardUserDefaults objectForKey:key];
     return value ? [value boolValue] : fallback;
@@ -65,6 +67,90 @@ static UIView *WTFindComposerContainer(UIView *root) {
         if (score > bestScore) { bestScore = score; best = candidate; }
     }
     return best;
+}
+static const NSInteger WTComposerBackdropTag = 0x57544247;
+static const NSInteger WTInputMethodGlassTag = 0x5754494D;
+static UIView *WTFindComposerBackdrop(UIView *root, UIView *host) {
+    CGFloat rw=CGRectGetWidth(root.bounds), rh=CGRectGetHeight(root.bounds);
+    UIView *best=nil;
+    for (UIView *v=host.superview; v && v!=root; v=v.superview) {
+        CGRect f=[v convertRect:v.bounds toView:root];
+        CGFloat w=CGRectGetWidth(f), h=CGRectGetHeight(f);
+        if (w>=rw*0.90 && h>=65 && h<=360 && CGRectGetMaxY(f)>=rh-90 &&
+            CGRectGetMinY(f)>=rh-390) best=v;
+    }
+    return best;
+}
+static void WTApplyComposerBackdrop(UIView *root, UIView *host) {
+    UIView *backdrop=WTFindComposerBackdrop(root,host);
+    if (!backdrop) return;
+    BOOL hide=WTInputBool(@"wt.input.nativeBackground.hide",YES);
+    BOOL blur=WTInputBool(@"wt.input.outerBlur.enabled",YES);
+    if (!objc_getAssociatedObject(backdrop,&WTOriginalBackdropBackgroundKey)) {
+        id original=backdrop.backgroundColor ?: (id)NSNull.null;
+        objc_setAssociatedObject(backdrop,&WTOriginalBackdropBackgroundKey,original,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
+    UIVisualEffectView *effect=(UIVisualEffectView *)[backdrop viewWithTag:WTComposerBackdropTag];
+    if (!hide && !blur) {
+        [effect removeFromSuperview];
+        id original=objc_getAssociatedObject(backdrop,&WTOriginalBackdropBackgroundKey);
+        backdrop.backgroundColor=(original==NSNull.null)?nil:original;
+        return;
+    }
+    if (hide) backdrop.backgroundColor=UIColor.clearColor;
+    if (!effect) {
+        effect=[[UIVisualEffectView alloc] initWithEffect:nil];
+        effect.tag=WTComposerBackdropTag; effect.userInteractionEnabled=NO; effect.translatesAutoresizingMaskIntoConstraints=NO;
+        [backdrop insertSubview:effect atIndex:0];
+        [NSLayoutConstraint activateConstraints:@[
+            [effect.leadingAnchor constraintEqualToAnchor:backdrop.leadingAnchor],
+            [effect.trailingAnchor constraintEqualToAnchor:backdrop.trailingAnchor],
+            [effect.topAnchor constraintEqualToAnchor:backdrop.topAnchor],
+            [effect.bottomAnchor constraintEqualToAnchor:backdrop.bottomAnchor]
+        ]];
+    }
+    effect.effect=blur?[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial]:nil;
+    effect.layer.cornerRadius=WTInputBool(@"wt.input.outerBlur.rounded",YES)?20:0;
+    effect.layer.cornerCurve=kCACornerCurveContinuous; effect.clipsToBounds=YES;
+}
+static void WTApplyInputMethodArea(UIView *root) {
+    NSMutableArray<UIView *> *stack=[NSMutableArray arrayWithObject:root];
+    NSUInteger count=0;
+    while(stack.count && count++<900) {
+        UIView *v=stack.lastObject; [stack removeLastObject];
+        NSString *name=NSStringFromClass(v.class).lowercaseString;
+        BOOL target=([name containsString:@"keyboardtoolbar"] || [name containsString:@"inputmethod"] ||
+                     [name containsString:@"inputmode"] || [name containsString:@"imeaccessory"] ||
+                     [name containsString:@"keyboardaccessory"]);
+        if(target && v!=root) {
+            BOOL enabled=WTInputBool(@"wt.input.method.enabled",YES);
+            UIVisualEffectView *glass=(UIVisualEffectView *)[v viewWithTag:WTInputMethodGlassTag];
+            if(!objc_getAssociatedObject(v,&WTOriginalIMEBackgroundKey)) {
+                id original=v.backgroundColor ?: (id)NSNull.null;
+                objc_setAssociatedObject(v,&WTOriginalIMEBackgroundKey,original,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+            }
+            if(enabled && WTInputBool(@"wt.input.method.hideBackground",YES)) v.backgroundColor=UIColor.clearColor;
+            if(enabled && WTInputBool(@"wt.input.method.blur",YES) && !glass) {
+                glass=[[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial]];
+                glass.tag=WTInputMethodGlassTag; glass.userInteractionEnabled=NO; glass.translatesAutoresizingMaskIntoConstraints=NO;
+                [v insertSubview:glass atIndex:0];
+                [NSLayoutConstraint activateConstraints:@[
+                    [glass.leadingAnchor constraintEqualToAnchor:v.leadingAnchor],
+                    [glass.trailingAnchor constraintEqualToAnchor:v.trailingAnchor],
+                    [glass.topAnchor constraintEqualToAnchor:v.topAnchor],
+                    [glass.bottomAnchor constraintEqualToAnchor:v.bottomAnchor]
+                ]];
+            }
+            if(!enabled) {
+                [glass removeFromSuperview];
+                id original=objc_getAssociatedObject(v,&WTOriginalIMEBackgroundKey);
+                v.backgroundColor=(original==NSNull.null)?nil:original;
+            }
+            glass.layer.cornerRadius=WTInputBool(@"wt.input.method.rounded",YES)?16:0;
+            glass.clipsToBounds=YES;
+        }
+        for(UIView *child in v.subviews) [stack addObject:child];
+    }
 }
 static UIColor *WTInputNamedColor(NSString *name, UIColor *fallback) {
     if ([name isEqualToString:@"green"]) return [UIColor colorWithRed:0.02 green:0.60 blue:0.34 alpha:1];
@@ -156,6 +242,8 @@ static void WTApplyChatInputGlass(UIView *root) {
         if (originalTransform) host.transform = originalTransform.CGAffineTransformValue;
         return;
     }
+    WTApplyComposerBackdrop(root,host);
+    WTApplyInputMethodArea(root);
     host.backgroundColor = UIColor.clearColor;
     host.layer.cornerRadius = radius;
     host.layer.cornerCurve = kCACornerCurveContinuous;
