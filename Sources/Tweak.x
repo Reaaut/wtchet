@@ -186,7 +186,7 @@ static void WTApplyChatInputGlass(UIView *root) {
             editor.backgroundColor = UIColor.clearColor;
             editor.layer.cornerRadius = style == 2 ? 16 : (style == 1 ? 24 : 20);
             editor.textColor = WTInputNamedColor([NSUserDefaults.standardUserDefaults stringForKey:@"wt.input.text.color"] ?: @"black", UIColor.labelColor);
-            editor.tintColor = WTInputNamedColor([NSUserDefaults.standardUserDefaults stringForKey:@"wt.input.cursor.color"] ?: @"green", self.view.tintColor ?: UIColor.systemGreenColor);
+            editor.tintColor = WTInputNamedColor([NSUserDefaults.standardUserDefaults stringForKey:@"wt.input.cursor.color"] ?: @"green", UIColor.systemGreenColor);
         } else if ([v isKindOfClass:UITextField.class]) {
             UITextField *field=(UITextField *)v;
             field.backgroundColor=UIColor.clearColor;
