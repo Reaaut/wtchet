@@ -135,8 +135,7 @@ static void WTPostInputSettingsChanged(void) {
     [baseRows addArrangedSubview:[self switchRow:@"输入栏磨砂背景" detail:@"使用系统薄磨砂材质" key:kBlur fallback:YES]];
     [baseRows addArrangedSubview:[self optionRow:@"按钮图标颜色" items:@[@"深色",@"绿色",@"白色"] key:kIconColor]];
     [baseRows addArrangedSubview:[self sliderRow:@"输入栏上下位置" detail:@"微调输入栏垂直位置" key:kOffset min:-20 max:20 fallback:0]];
-    [baseRows addArrangedSubview:[self switchRow:@"输入框加号液态菜单" detail:@"仅美化加号按钮外观，不改变原生菜单动作" key:kJelly fallback:NO]];
-    [self addHeading:@"样式预览"];
+     [self addHeading:@"样式预览"];
     UIVisualEffectView *sampleCard=[self panel]; UIStackView *sampleRows=[self verticalStack];
     self.style=[[UISegmentedControl alloc] initWithItems:@[@"简约",@"大胶囊",@"小胶囊"]];
     NSInteger saved=[NSUserDefaults.standardUserDefaults integerForKey:kStyle]; self.style.selectedSegmentIndex=MIN(saved,2);
