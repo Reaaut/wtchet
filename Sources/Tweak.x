@@ -23,6 +23,21 @@ static void WTShowSettings(void) {
     [top presentViewController:nav animated:YES completion:nil];
 }
 
+@interface WTLauncherTarget : NSObject
++ (instancetype)shared;
+- (void)openSettings;
+@end
+
+@implementation WTLauncherTarget
++ (instancetype)shared {
+    static WTLauncherTarget *target;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{ target = [WTLauncherTarget new]; });
+    return target;
+}
+- (void)openSettings { WTShowSettings(); }
+@end
+
 static void WTInstallLauncher(void) {
     if (![NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.tencent.xin"]) return;
     UIWindow *window = WTKeyWindow();
@@ -45,21 +60,6 @@ static void WTInstallLauncher(void) {
     [button addTarget:[WTLauncherTarget shared] action:@selector(openSettings) forControlEvents:UIControlEventTouchUpInside];
     [window addSubview:button];
 }
-
-@interface WTLauncherTarget : NSObject
-+ (instancetype)shared;
-- (void)openSettings;
-@end
-
-@implementation WTLauncherTarget
-+ (instancetype)shared {
-    static WTLauncherTarget *target;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{ target = [WTLauncherTarget new]; });
-    return target;
-}
-- (void)openSettings { WTShowSettings(); }
-@end
 
 %hook UIViewController
 - (void)viewDidAppear:(BOOL)animated {
