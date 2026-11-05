@@ -2,20 +2,18 @@
 
 Rootless WeChat tweak for iOS 15+.
 
-## Current feature: chat composer
+## Chat composer controls
 
-- Frosted composer pill with three corner-radius presets.
-- Native bottom tray cleanup with a separate system Thin Material layer.
-- Independent input-method toolbar controls (master switch, native background visibility, blur, rounded corners).
-- Button tint/fill styling, SMS compact mode, placeholder text, fade layer, animated edge glow and vertical offset.
-- Global enable switch refreshes the active chat UI immediately.
-- Original host, editor and button appearance is snapshotted and restored when styling is disabled.
-- Layout scans are throttled to avoid repeatedly walking the WeChat view tree during every layout pass.
-
-The hook uses conservative view-tree and geometry checks because WeChat's private view classes can vary by version. Some keyboard-owned accessory views may live outside the app's view hierarchy and cannot be styled by this hook.
+- Clear native composer and bottom tray backgrounds so the chat wallpaper remains visible.
+- Optional independent thin-material frosted layer for the outer tray and composer pill.
+- Rounded composer styles, compact SMS mode, button tint, text and cursor colors, placeholder text, vertical offset.
+- Optional fade overlay and animated edge glow with speed/color controls.
+- Independent input-method area controls: master switch, native background visibility, frosted material and corner radius.
+- Settings controls persist locally and notify the active chat UI to refresh.
+- Original native background colors and blur effects are restored when disabled.
 
 ## Build
 
 `make clean package THEOS_PACKAGE_SCHEME=rootless`
 
-No WCGlass binary code or server verification is used; this is an independent implementation.
+This is an independent implementation and does not include WCGlass binary code or server verification.
