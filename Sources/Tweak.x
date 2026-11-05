@@ -51,6 +51,7 @@ static void WTApplyChatInputGlass(UIView *root) {
             [glass.bottomAnchor constraintEqualToAnchor:host.bottomAnchor]
         ]];
     }
+    glass.effect = WTInputBool(@"wt.glass.enabled", YES) ? [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial] : nil;
     // Keep WeChat's original container clipping and hit-testing intact.
     glass.layer.cornerRadius = radius;
     glass.layer.cornerCurve = kCACornerCurveContinuous;
@@ -77,7 +78,7 @@ static void WTApplyChatInputGlass(UIView *root) {
         if ([v isKindOfClass:UIButton.class]) {
             UIButton *button = (UIButton *)v;
             NSString *accessibility = [[(button.accessibilityLabel ?: @"") lowercaseString] stringByAppendingString:(button.currentTitle ?: @"")];
-            button.hidden = WTInputBool(@"wt.input.sms.hideEmoji", NO) && ([accessibility containsString:@"表情"] || [accessibility containsString:@"emoji"]);
+            if (WTInputBool(@"wt.input.sms.hideEmoji", NO) && ([accessibility containsString:@"表情"] || [accessibility containsString:@"emoji"])) button.hidden = YES;
             button.tintColor = [UIColor colorWithWhite:0.12 alpha:1];
             button.layer.cornerCurve = kCACornerCurveContinuous;
             button.layer.cornerRadius = smsMode ? 16 : (style == 2 ? 18 : 22);
