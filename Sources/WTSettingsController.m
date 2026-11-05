@@ -25,7 +25,7 @@
     if ((self = [super initWithFrame:CGRectZero])) {
         _item = item;
         self.backgroundColor = UIColor.clearColor;
-        self.layer.cornerRadius = 27;
+        self.layer.cornerRadius = 20;
         self.layer.cornerCurve = kCACornerCurveContinuous;
         self.layer.borderWidth = 1.0;
         self.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.68].CGColor;
@@ -43,7 +43,7 @@
 
         _symbolLabel = [UILabel new];
         _symbolLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        _symbolLabel.font = [UIFont systemFontOfSize:30 weight:UIFontWeightMedium];
+        _symbolLabel.font = [UIFont systemFontOfSize:22 weight:UIFontWeightMedium];
         _symbolLabel.textColor = [UIColor colorWithRed:0.02 green:0.37 blue:0.21 alpha:1];
         _symbolLabel.textAlignment = NSTextAlignmentCenter;
         _symbolLabel.text = item.symbol ?: @"circle.grid.2x2.fill";
@@ -51,7 +51,7 @@
 
         _titleLabel = [UILabel new];
         _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        _titleLabel.font = [UIFont systemFontOfSize:18 weight:UIFontWeightSemibold];
+        _titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
         _titleLabel.textColor = UIColor.labelColor;
         _titleLabel.text = item.title;
         _titleLabel.numberOfLines = 1;
@@ -59,7 +59,7 @@
 
         _subtitleLabel = [UILabel new];
         _subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        _subtitleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightRegular];
+        _subtitleLabel.font = [UIFont systemFontOfSize:11 weight:UIFontWeightRegular];
         _subtitleLabel.textColor = UIColor.secondaryLabelColor;
         _subtitleLabel.text = item.subtitle;
         _subtitleLabel.numberOfLines = 1;
@@ -112,6 +112,7 @@
     [super viewDidLoad];
     self.title = @"wtchet";
     self.view.backgroundColor = [UIColor colorWithRed:0.88 green:0.94 blue:0.91 alpha:1];
+    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"返回" style:UIBarButtonItemStylePlain target:self action:@selector(closeSettings)];
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"日志" style:UIBarButtonItemStylePlain target:self action:@selector(showLogPlaceholder)];
     [self buildItems];
     [self buildInterface];
@@ -166,14 +167,14 @@
     self.contentStack = [UIStackView new];
     self.contentStack.translatesAutoresizingMaskIntoConstraints = NO;
     self.contentStack.axis = UILayoutConstraintAxisVertical;
-    self.contentStack.spacing = 15;
+    self.contentStack.spacing = 9;
     [self.scrollView addSubview:self.contentStack];
 
     [NSLayoutConstraint activateConstraints:@[
       [self.scrollView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:8],
       [self.scrollView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:14],
       [self.scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-14],
-      [self.scrollView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-92],
+      [self.scrollView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-70],
       [self.contentStack.topAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.topAnchor constant:8],
       [self.contentStack.leadingAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.leadingAnchor],
       [self.contentStack.trailingAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.trailingAnchor],
@@ -188,12 +189,12 @@
     UILabel *brand = [UILabel new];
     brand.translatesAutoresizingMaskIntoConstraints = NO;
     brand.text = @"wtchet";
-    brand.font = [UIFont systemFontOfSize:27 weight:UIFontWeightBold];
+    brand.font = [UIFont systemFontOfSize:22 weight:UIFontWeightBold];
     brand.textAlignment = NSTextAlignmentCenter;
     UILabel *caption = [UILabel new];
     caption.translatesAutoresizingMaskIntoConstraints = NO;
     caption.text = @"Liquid Glass · 设置中心";
-    caption.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
+    caption.font = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
     caption.textColor = UIColor.secondaryLabelColor;
     caption.textAlignment = NSTextAlignmentCenter;
     [header.contentView addSubview:brand];
@@ -206,7 +207,7 @@
       [caption.bottomAnchor constraintEqualToAnchor:header.bottomAnchor constant:-15]
     ]];
     [self.contentStack addArrangedSubview:header];
-    [header.heightAnchor constraintEqualToConstant:88].active = YES;
+    [header.heightAnchor constraintEqualToConstant:62].active = YES;
 
     self.searchBar = [UISearchBar new];
     self.searchBar.delegate = self;
@@ -221,7 +222,7 @@
       [self.searchBar.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:22],
       [self.searchBar.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-22],
       [self.searchBar.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-5],
-      [self.searchBar.heightAnchor constraintEqualToConstant:55]
+      [self.searchBar.heightAnchor constraintEqualToConstant:46]
     ]];
 }
 
@@ -236,13 +237,13 @@
     for (NSUInteger i = 0; i < items.count; i += 2) {
         UIStackView *row = [UIStackView new];
         row.axis = UILayoutConstraintAxisHorizontal;
-        row.spacing = 14;
+        row.spacing = 9;
         row.distribution = UIStackViewDistributionFillEqually;
         for (NSUInteger j = i; j < MIN(i + 2, items.count); j++) {
             WTSettingsCard *card = [[WTSettingsCard alloc] initWithItem:items[j]];
             [card addTarget:self action:@selector(cardTapped:) forControlEvents:UIControlEventTouchUpInside];
             [row addArrangedSubview:card];
-            [card.heightAnchor constraintEqualToConstant:112].active = YES;
+            [card.heightAnchor constraintEqualToConstant:84].active = YES;
         }
         if (items.count % 2 && i + 1 >= items.count) [row addArrangedSubview:[UIView new]];
         [self.contentStack addArrangedSubview:row];
@@ -285,7 +286,7 @@
     [self.navigationController pushViewController:placeholder animated:YES];
 }
 
-- (void)showLogPlaceholder {
+- (void)closeSettings { [self dismissViewControllerAnimated:YES completion:nil]; }\n\n- (void)showLogPlaceholder {
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"wtchet 日志" message:@"当前为设置界面原型版本，日志模块尚未接入。" preferredStyle:UIAlertControllerStyleAlert];
     [alert addAction:[UIAlertAction actionWithTitle:@"知道了" style:UIAlertActionStyleDefault handler:nil]];
     [self presentViewController:alert animated:YES completion:nil];
