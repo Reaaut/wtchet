@@ -138,8 +138,6 @@ static void WTPostInputSettingsChanged(void) {
     [baseRows addArrangedSubview:[self switchRow:@"输入框胶囊" detail:@"输入框样式总开关" key:kEnabled fallback:YES]];
     UIView *line=[UIView new]; line.backgroundColor=[UIColor colorWithWhite:1 alpha:0.75]; [line.heightAnchor constraintEqualToConstant:1].active=YES; [baseRows addArrangedSubview:line];
     [baseRows addArrangedSubview:[self disclosureRow:@"展开" detail:@"输入框样式、布局选项" action:@selector(scrollToStyle)]];
-    [self addPanel:base content:baseRows inset:0];
-
     [baseRows addArrangedSubview:[self switchRow:@"输入栏磨砂背景" detail:@"使用系统薄磨砂材质" key:kBlur fallback:YES]];
     [baseRows addArrangedSubview:[self switchRow:@"输入框渐隐背景" detail:@"在输入栏叠加柔和渐变层" key:kFade fallback:NO]];
     [baseRows addArrangedSubview:[self optionRow:@"按钮图标颜色" items:@[@"深色",@"绿色",@"白色"] key:kIconColor]];
@@ -147,7 +145,9 @@ static void WTPostInputSettingsChanged(void) {
     [baseRows addArrangedSubview:[self disclosureRow:@"输入光标颜色" detail:@"自定义输入光标颜色" action:@selector(chooseCursorColor)]];
     [baseRows addArrangedSubview:[self disclosureRow:@"输入文字颜色" detail:@"自定义输入文字颜色" action:@selector(chooseTextColor)]];
     [baseRows addArrangedSubview:[self sliderRow:@"输入栏上下位置" detail:@"微调输入栏垂直位置" key:kOffset min:-20 max:20 fallback:0]];
-     [self addHeading:@"输入法功能区"];
+    [self addPanel:base content:baseRows inset:0];
+
+    [self addHeading:@"输入法功能区"];
     UIVisualEffectView *method=[self panel]; UIStackView *methodRows=[self verticalStack];
     [methodRows addArrangedSubview:[self switchRow:@"输入法功能区美化" detail:@"单独控制键盘上方的输入法工具区域" key:kMethod fallback:YES]];
     [methodRows addArrangedSubview:[self switchRow:@"隐藏原生底板" detail:@"去除微信输入栏外层原生纯色背景" key:kNativeBG fallback:YES]];
