@@ -13,7 +13,7 @@
 
 @interface WTSettingsCard : UIControl
 @property(nonatomic, strong) UIVisualEffectView *blurView;
-@property(nonatomic, strong) UILabel *symbolLabel;
+@property(nonatomic, strong) UIImageView *symbolView;
 @property(nonatomic, strong) UILabel *titleLabel;
 @property(nonatomic, strong) UILabel *subtitleLabel;
 @property(nonatomic, strong) UISwitch *toggle;
@@ -41,17 +41,15 @@
             [_blurView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor]
         ]];
 
-        _symbolLabel = [UILabel new];
-        _symbolLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        _symbolLabel.font = [UIFont systemFontOfSize:22 weight:UIFontWeightMedium];
-        _symbolLabel.textColor = [UIColor colorWithRed:0.02 green:0.37 blue:0.21 alpha:1];
-        _symbolLabel.textAlignment = NSTextAlignmentCenter;
-        _symbolLabel.text = item.symbol ?: @"circle.grid.2x2.fill";
-        [self addSubview:_symbolLabel];
+        _symbolView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:item.symbol ?: @"circle.grid.2x2.fill"]];
+        _symbolView.translatesAutoresizingMaskIntoConstraints = NO;
+        _symbolView.contentMode = UIViewContentModeScaleAspectFit;
+        _symbolView.tintColor = [UIColor colorWithRed:0.02 green:0.37 blue:0.21 alpha:1];
+        [self addSubview:_symbolView];
 
         _titleLabel = [UILabel new];
         _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        _titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
+        _titleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold];
         _titleLabel.textColor = UIColor.labelColor;
         _titleLabel.text = item.title;
         _titleLabel.numberOfLines = 1;
@@ -59,7 +57,7 @@
 
         _subtitleLabel = [UILabel new];
         _subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        _subtitleLabel.font = [UIFont systemFontOfSize:11 weight:UIFontWeightRegular];
+        _subtitleLabel.font = [UIFont systemFontOfSize:10 weight:UIFontWeightRegular];
         _subtitleLabel.textColor = UIColor.secondaryLabelColor;
         _subtitleLabel.text = item.subtitle;
         _subtitleLabel.numberOfLines = 1;
@@ -75,10 +73,11 @@
         }
 
         NSMutableArray *constraints = [NSMutableArray arrayWithArray:@[
-            [_symbolLabel.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:17],
-            [_symbolLabel.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
-            [_symbolLabel.widthAnchor constraintEqualToConstant:48],
-            [_titleLabel.leadingAnchor constraintEqualToAnchor:_symbolLabel.trailingAnchor constant:9],
+            [_symbolView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:12],
+            [_symbolView.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
+            [_symbolView.widthAnchor constraintEqualToConstant:22],
+            [_symbolView.heightAnchor constraintEqualToConstant:22],
+            [_titleLabel.leadingAnchor constraintEqualToAnchor:_symbolView.trailingAnchor constant:8],
             [_titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.trailingAnchor constant:-12],
             [_titleLabel.centerYAnchor constraintEqualToAnchor:self.centerYAnchor constant:-12],
             [_subtitleLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
