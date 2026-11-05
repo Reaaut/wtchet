@@ -17,6 +17,13 @@ static NSString * const kOffset = @"wt.input.offsetY";
 static NSString * const kIconColor = @"wt.input.icon.color";
 static NSString * const kMenuTheme = @"wt.input.jelly.theme";
 static NSString * const kFade = @"wt.input.fade.enabled";
+static NSString * const kNativeBG = @"wt.input.nativeBackground.hide";
+static NSString * const kOuterBlur = @"wt.input.outerBlur.enabled";
+static NSString * const kOuterRound = @"wt.input.outerBlur.rounded";
+static NSString * const kMethod = @"wt.input.method.enabled";
+static NSString * const kMethodBG = @"wt.input.method.hideBackground";
+static NSString * const kMethodBlur = @"wt.input.method.blur";
+static NSString * const kMethodRound = @"wt.input.method.rounded";
 static void WTPostInputSettingsChanged(void) {
     [[NSNotificationCenter defaultCenter] postNotificationName:@"wt.input.settings.changed" object:nil];
 }
@@ -140,7 +147,18 @@ static void WTPostInputSettingsChanged(void) {
     [baseRows addArrangedSubview:[self disclosureRow:@"输入光标颜色" detail:@"自定义输入光标颜色" action:@selector(chooseCursorColor)]];
     [baseRows addArrangedSubview:[self disclosureRow:@"输入文字颜色" detail:@"自定义输入文字颜色" action:@selector(chooseTextColor)]];
     [baseRows addArrangedSubview:[self sliderRow:@"输入栏上下位置" detail:@"微调输入栏垂直位置" key:kOffset min:-20 max:20 fallback:0]];
-     [self addHeading:@"样式预览"];
+     [self addHeading:@"输入法功能区"];
+    UIVisualEffectView *method=[self panel]; UIStackView *methodRows=[self verticalStack];
+    [methodRows addArrangedSubview:[self switchRow:@"输入法功能区美化" detail:@"单独控制键盘上方的输入法工具区域" key:kMethod fallback:YES]];
+    [methodRows addArrangedSubview:[self switchRow:@"隐藏原生底板" detail:@"去除微信输入栏外层原生纯色背景" key:kNativeBG fallback:YES]];
+    [methodRows addArrangedSubview:[self switchRow:@"外层毛玻璃背景" detail:@"为输入栏底部区域添加系统磨砂" key:kOuterBlur fallback:YES]];
+    [methodRows addArrangedSubview:[self switchRow:@"外层背景圆角" detail:@"输入区域采用连续圆角边缘" key:kOuterRound fallback:YES]];
+    [methodRows addArrangedSubview:[self switchRow:@"隐藏输入法原生背景" detail:@"仅作用于识别到的键盘工具栏" key:kMethodBG fallback:YES]];
+    [methodRows addArrangedSubview:[self switchRow:@"输入法区域毛玻璃" detail:@"为输入法工具栏添加薄磨砂材质" key:kMethodBlur fallback:YES]];
+    [methodRows addArrangedSubview:[self switchRow:@"输入法区域圆角" detail:@"输入法工具栏使用连续圆角" key:kMethodRound fallback:YES]];
+    [self addPanel:method content:methodRows inset:0];
+
+    [self addHeading:@"样式预览"];
     UIVisualEffectView *sampleCard=[self panel]; UIStackView *sampleRows=[self verticalStack];
     self.style=[[UISegmentedControl alloc] initWithItems:@[@"简约",@"大胶囊",@"小胶囊"]];
     NSInteger saved=[NSUserDefaults.standardUserDefaults integerForKey:kStyle]; self.style.selectedSegmentIndex=MIN(saved,2);
