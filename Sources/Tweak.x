@@ -63,6 +63,27 @@ static UIView *WTFindComposerContainer(UIView *root) {
     }
     return best;
 }
+static UIColor *WTInputNamedColor(NSString *name, UIColor *fallback) {
+    if ([name isEqualToString:@"green"]) return [UIColor colorWithRed:0.02 green:0.60 blue:0.34 alpha:1];
+    if ([name isEqualToString:@"blue"]) return [UIColor colorWithRed:0.12 green:0.48 blue:0.95 alpha:1];
+    if ([name isEqualToString:@"purple"]) return [UIColor colorWithRed:0.58 green:0.34 blue:0.92 alpha:1];
+    if ([name isEqualToString:@"white"]) return UIColor.whiteColor;
+    if ([name isEqualToString:@"black"]) return [UIColor colorWithWhite:0.08 alpha:1];
+    if ([name isEqualToString:@"gray"]) return [UIColor colorWithWhite:0.42 alpha:1];
+    return fallback;
+}
+static void WTUpdateFadeBackground(UIVisualEffectView *glass) {
+    NSString *name = @"wtchet.input.fade";
+    CAGradientLayer *fade = nil;
+    for (CALayer *layer in glass.contentView.layer.sublayers) if ([layer.name isEqualToString:name]) { fade=(CAGradientLayer *)layer; break; }
+    if (!WTInputBool(@"wt.input.fade.enabled", NO)) { [fade removeFromSuperlayer]; return; }
+    if (!fade) { fade=[CAGradientLayer layer]; fade.name=name; [glass.contentView.layer insertSublayer:fade atIndex:0]; }
+    fade.frame=glass.contentView.bounds;
+    fade.startPoint=CGPointMake(0.5,0); fade.endPoint=CGPointMake(0.5,1);
+    UIColor *tint=WTInputNamedColor([NSUserDefaults.standardUserDefaults stringForKey:@"wt.input.fade.color"] ?: @"green",[UIColor colorWithWhite:1 alpha:1]);
+    fade.colors=@[(id)[tint colorWithAlphaComponent:0.22].CGColor,(id)[tint colorWithAlphaComponent:0.03].CGColor,(id)UIColor.clearColor.CGColor];
+    fade.locations=@[@0,@0.55,@1];
+}
 static void WTUpdateGlowBorder(UIVisualEffectView *glass, CGFloat radius) {
     NSString *layerName = @"wtchet.glow.border";
     CAGradientLayer *gradient = nil;
@@ -153,6 +174,7 @@ static void WTApplyChatInputGlass(UIView *root) {
     glass.layer.borderWidth = 0.8;
     glass.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.62].CGColor;
     WTUpdateGlowBorder(glass, radius);
+    WTUpdateFadeBackground(glass);
 
     UITextView *editor = nil;
     NSMutableArray<UIView *> *nodes = [NSMutableArray arrayWithObject:host];
@@ -163,8 +185,13 @@ static void WTApplyChatInputGlass(UIView *root) {
             editor = (UITextView *)v;
             editor.backgroundColor = UIColor.clearColor;
             editor.layer.cornerRadius = style == 2 ? 16 : (style == 1 ? 24 : 20);
+            editor.textColor = WTInputNamedColor([NSUserDefaults.standardUserDefaults stringForKey:@"wt.input.text.color"] ?: @"black", UIColor.labelColor);
+            editor.tintColor = WTInputNamedColor([NSUserDefaults.standardUserDefaults stringForKey:@"wt.input.cursor.color"] ?: @"green", self.view.tintColor ?: UIColor.systemGreenColor);
         } else if ([v isKindOfClass:UITextField.class]) {
-            ((UITextField *)v).backgroundColor = UIColor.clearColor;
+            UITextField *field=(UITextField *)v;
+            field.backgroundColor=UIColor.clearColor;
+            field.textColor=WTInputNamedColor([NSUserDefaults.standardUserDefaults stringForKey:@"wt.input.text.color"] ?: @"black",UIColor.labelColor);
+            field.tintColor=WTInputNamedColor([NSUserDefaults.standardUserDefaults stringForKey:@"wt.input.cursor.color"] ?: @"green",UIColor.systemGreenColor);
         }
         if ([v isKindOfClass:UIButton.class]) {
             UIButton *button = (UIButton *)v;
@@ -175,6 +202,9 @@ static void WTApplyChatInputGlass(UIView *root) {
             NSInteger iconColor = [NSUserDefaults.standardUserDefaults integerForKey:@"wt.input.icon.color"];
             button.tintColor = iconColor == 1 ? [UIColor colorWithRed:0.02 green:0.53 blue:0.30 alpha:1] :
                                (iconColor == 2 ? UIColor.whiteColor : [UIColor colorWithWhite:0.12 alpha:1]);
+            if ([accessibility containsString:@"发送"] || [accessibility containsString:@"send"]) {
+                button.tintColor = WTInputNamedColor([NSUserDefaults.standardUserDefaults stringForKey:@"wt.input.send.color"] ?: @"green", button.tintColor);
+            }
             button.layer.cornerCurve = kCACornerCurveContinuous;
             button.layer.cornerRadius = smsMode ? (smsSize == 1 ? 13 : 18) : (style == 2 ? 18 : 22);
             button.layer.borderWidth = 0.65;
@@ -198,6 +228,7 @@ static void WTApplyChatInputGlass(UIView *root) {
             UILabel *label = (UILabel *)v;
             if ([label.text containsString:@"发送消息"] || [label.text containsString:@"输入"]) {
                 label.text = [NSUserDefaults.standardUserDefaults stringForKey:@"wt.input.placeholder.text"] ?: @"发送消息";
+                label.textColor = WTInputNamedColor([NSUserDefaults.standardUserDefaults stringForKey:@"wt.input.text.color"] ?: @"gray", UIColor.secondaryLabelColor);
             }
         }
         for (UIView *child in v.subviews) [nodes addObject:child];
