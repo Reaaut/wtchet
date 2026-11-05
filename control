@@ -1,0 +1,9 @@
+Package: com.reaaut.wtchet
+Name: wtchet
+Version: 0.1.0
+Architecture: iphoneos-arm64
+Description: wtchet settings interface prototype for WeChat.
+Maintainer: Reaaut
+Author: Reaaut
+Section: Tweaks
+Depends: mobilesubstrate
