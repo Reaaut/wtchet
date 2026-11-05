@@ -1,5 +1,60 @@
 #import <UIKit/UIKit.h>
 #import "WTSettingsController.h"
+#import <objc/runtime.h>
+
+
+static const NSInteger WTInputGlassTag = 0x57544947;
+static BOOL WTInputBool(NSString *key, BOOL fallback) {
+    id value = [NSUserDefaults.standardUserDefaults objectForKey:key];
+    return value ? [value boolValue] : fallback;
+}
+static UIView *WTFindComposerContainer(UIView *root) {
+    NSMutableArray<UIView *> *stack = [NSMutableArray arrayWithObject:root];
+    UITextView *textView = nil;
+    NSUInteger visited = 0;
+    while (stack.count && visited++ < 700) {
+        UIView *v = stack.lastObject; [stack removeLastObject];
+        if ([v isKindOfClass:UITextView.class] && !v.hidden && v.alpha > 0.05) { textView = (UITextView *)v; break; }
+        for (UIView *child in v.subviews) [stack addObject:child];
+    }
+    if (!textView) return nil;
+    UIView *candidate = textView.superview;
+    while (candidate && candidate != root) {
+        CGRect f = [candidate convertRect:candidate.bounds toView:root];
+        if (CGRectGetWidth(f) >= CGRectGetWidth(root.bounds) * 0.62 &&
+            CGRectGetHeight(f) >= 38 && CGRectGetHeight(f) <= 180 &&
+            CGRectGetMaxY(f) >= CGRectGetHeight(root.bounds) - 190) return candidate;
+        candidate = candidate.superview;
+    }
+    return nil;
+}
+static void WTApplyChatInputGlass(UIView *root) {
+    if (!NSThread.isMainThread || !root || !WTInputBool(@"wt.input.enabled", YES)) return;
+    UIView *host = WTFindComposerContainer(root);
+    if (!host) return;
+    NSInteger style = [NSUserDefaults.standardUserDefaults integerForKey:@"wt.input.preview.style"];
+    CGFloat radius = style == 2 ? 17.0 : (style == 1 ? 29.0 : 23.0);
+    UIVisualEffectView *glass = (UIVisualEffectView *)[host viewWithTag:WTInputGlassTag];
+    if (!glass) {
+        glass = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial]];
+        glass.tag = WTInputGlassTag;
+        glass.userInteractionEnabled = NO;
+        glass.translatesAutoresizingMaskIntoConstraints = NO;
+        [host insertSubview:glass atIndex:0];
+        [NSLayoutConstraint activateConstraints:@[
+            [glass.leadingAnchor constraintEqualToAnchor:host.leadingAnchor],
+            [glass.trailingAnchor constraintEqualToAnchor:host.trailingAnchor],
+            [glass.topAnchor constraintEqualToAnchor:host.topAnchor],
+            [glass.bottomAnchor constraintEqualToAnchor:host.bottomAnchor]
+        ]];
+        host.backgroundColor = UIColor.clearColor;
+    }
+    host.layer.cornerRadius = radius;
+    host.layer.cornerCurve = kCACornerCurveContinuous;
+    host.layer.masksToBounds = YES;
+    host.layer.borderWidth = 0.7;
+    host.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.42].CGColor;
+}
 
 static UIViewController *WTTopController(UIViewController *controller) {
     if (controller.presentedViewController) return WTTopController(controller.presentedViewController);
@@ -65,6 +120,11 @@ static void WTInstallLauncher(void) {
 - (void)viewDidAppear:(BOOL)animated {
     %orig;
     dispatch_async(dispatch_get_main_queue(), ^{ WTInstallLauncher(); });
+}
+- (void)viewDidLayoutSubviews {
+    %orig;
+    if (![NSStringFromClass(self.class) isEqualToString:@"BaseMsgContentViewController"]) return;
+    WTApplyChatInputGlass(self.view);
 }
 %end
 
