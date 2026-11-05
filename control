@@ -1,8 +1,8 @@
 Package: com.reaaut.wtchet
 Name: wtchet
-Version: 0.1.7
+Version: 0.1.8
 Architecture: iphoneos-arm64
-Description: wtchet scoped transparent chat composer tray, frosted composer and working input settings for WeChat.
+Description: wtchet outer composer tray transparency only, frosted composer and working input settings for WeChat.
 Maintainer: Reaaut
 Author: Reaaut
 Section: Tweaks
