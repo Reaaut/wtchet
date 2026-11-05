@@ -34,6 +34,7 @@
 
         _blurView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterialLight]];
         _blurView.translatesAutoresizingMaskIntoConstraints = NO;
+        _blurView.userInteractionEnabled = NO;
         [self addSubview:_blurView];
         [NSLayoutConstraint activateConstraints:@[
             [_blurView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
@@ -45,6 +46,7 @@
         _symbolView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:item.symbol ?: @"circle.grid.2x2.fill"]];
         _symbolView.translatesAutoresizingMaskIntoConstraints = NO;
         _symbolView.contentMode = UIViewContentModeScaleAspectFit;
+        _symbolView.userInteractionEnabled = NO;
         _symbolView.tintColor = [UIColor colorWithRed:0.02 green:0.37 blue:0.21 alpha:1];
         [self addSubview:_symbolView];
 
@@ -54,6 +56,7 @@
         _titleLabel.textColor = UIColor.labelColor;
         _titleLabel.text = item.title;
         _titleLabel.numberOfLines = 1;
+        _titleLabel.userInteractionEnabled = NO;
         [self addSubview:_titleLabel];
 
         _subtitleLabel = [UILabel new];
@@ -62,6 +65,7 @@
         _subtitleLabel.textColor = UIColor.secondaryLabelColor;
         _subtitleLabel.text = item.subtitle;
         _subtitleLabel.numberOfLines = 1;
+        _subtitleLabel.userInteractionEnabled = NO;
         [self addSubview:_subtitleLabel];
 
         if (item.isToggle) {
