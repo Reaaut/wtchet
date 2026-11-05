@@ -49,11 +49,12 @@ static void WTApplyChatInputGlass(UIView *root) {
         ]];
         host.backgroundColor = UIColor.clearColor;
     }
-    host.layer.cornerRadius = radius;
-    host.layer.cornerCurve = kCACornerCurveContinuous;
-    host.layer.masksToBounds = YES;
-    host.layer.borderWidth = 0.7;
-    host.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.42].CGColor;
+    // Keep WeChat's original clipping and hit-testing behavior intact.
+    glass.layer.cornerRadius = radius;
+    glass.layer.cornerCurve = kCACornerCurveContinuous;
+    glass.clipsToBounds = YES;
+    glass.layer.borderWidth = 0.7;
+    glass.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.42].CGColor;
 }
 
 static UIViewController *WTTopController(UIViewController *controller) {
