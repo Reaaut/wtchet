@@ -105,7 +105,7 @@ static NSString * const WTInputStyleKey = @"wt.input.preview.style";
     UIView *sample = [self previewComposer];
     [previewContent addArrangedSubview:sample];
     UILabel *note = [UILabel new];
-    note.text = @"仅为设置页效果预览；尚未接管微信真实聊天输入栏";
+    note.text = @"样式将同步应用到微信聊天输入栏；此版本先实现磨砂背景与圆角";
     note.font = [UIFont systemFontOfSize:12];
     note.textColor = UIColor.secondaryLabelColor;
     note.textAlignment = NSTextAlignmentCenter;
@@ -131,7 +131,7 @@ static NSString * const WTInputStyleKey = @"wt.input.preview.style";
 
     [self addSectionTitle:@"说明"];
     UILabel *foot = [UILabel new];
-    foot.text = @"第一阶段先完成设置项、参数保存和外观预览。微信聊天页的真实输入框接管需要根据当前微信版本确认输入栏容器和子视图，避免误改其他页面或造成闪退。";
+    foot.text = @"当前版本已加入聊天页输入栏的保守识别与磨砂背景层。短信风格、占位符替换、加号菜单和工具栏细节仍为后续开发项。";
     foot.font = [UIFont systemFontOfSize:12];
     foot.textColor = UIColor.secondaryLabelColor;
     foot.numberOfLines = 0;
