@@ -4,6 +4,9 @@
 
 
 static const NSInteger WTInputGlassTag = 0x57544947;
+static char WTOriginalHostBackgroundKey;
+static char WTOriginalHostTransformKey;
+static char WTOriginalButtonHiddenKey;
 static BOOL WTInputBool(NSString *key, BOOL fallback) {
     id value = [NSUserDefaults.standardUserDefaults objectForKey:key];
     return value ? [value boolValue] : fallback;
@@ -136,22 +139,30 @@ static void WTApplyChatInputGlass(UIView *root) {
     UIView *host = WTFindComposerContainer(root);
     if (!host) return;
     BOOL enabled = WTInputBool(@"wt.global.enabled", YES) && WTInputBool(@"wt.input.enabled", YES);
-    host.backgroundColor = UIColor.clearColor;
+    if (!objc_getAssociatedObject(host, &WTOriginalHostBackgroundKey)) {
+        id original = host.backgroundColor ?: (id)NSNull.null;
+        objc_setAssociatedObject(host, &WTOriginalHostBackgroundKey, original, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        objc_setAssociatedObject(host, &WTOriginalHostTransformKey, [NSValue valueWithCGAffineTransform:host.transform], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
     NSInteger style = [NSUserDefaults.standardUserDefaults integerForKey:@"wt.input.preview.style"];
     BOOL smsMode = WTInputBool(@"wt.input.sms.enabled", NO);
     NSInteger smsSize = [NSUserDefaults.standardUserDefaults integerForKey:@"wt.input.sms.size"];
     CGFloat radius = smsMode ? (smsSize == 1 ? 13.0 : 20.0) : (style == 2 ? 17.0 : (style == 1 ? 29.0 : 23.0));
     if (!enabled) {
         [[host viewWithTag:WTInputGlassTag] removeFromSuperview];
-        host.layer.borderWidth = 0;
-        host.backgroundColor = UIColor.clearColor;
+        id originalBackground = objc_getAssociatedObject(host, &WTOriginalHostBackgroundKey);
+        host.backgroundColor = (originalBackground == NSNull.null) ? nil : originalBackground;
+        NSValue *originalTransform = objc_getAssociatedObject(host, &WTOriginalHostTransformKey);
+        if (originalTransform) host.transform = originalTransform.CGAffineTransformValue;
         return;
     }
+    host.backgroundColor = UIColor.clearColor;
     host.layer.cornerRadius = radius;
     host.layer.cornerCurve = kCACornerCurveContinuous;
     host.clipsToBounds = YES;
     CGFloat verticalOffset = [NSUserDefaults.standardUserDefaults floatForKey:@"wt.input.offsetY"];
-    host.transform = CGAffineTransformMakeTranslation(0, verticalOffset);
+    NSValue *originalTransform = objc_getAssociatedObject(host, &WTOriginalHostTransformKey);
+    host.transform = CGAffineTransformTranslate(originalTransform ? originalTransform.CGAffineTransformValue : CGAffineTransformIdentity, 0, verticalOffset);
     UIVisualEffectView *glass = (UIVisualEffectView *)[host viewWithTag:WTInputGlassTag];
     if (!glass) {
         glass = [[UIVisualEffectView alloc] initWithEffect:WTInputBool(@"wt.glass.enabled", YES) ? [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial] : nil];
@@ -198,7 +209,12 @@ static void WTApplyChatInputGlass(UIView *root) {
             NSString *accessibility = [[(button.accessibilityLabel ?: @"") lowercaseString] stringByAppendingString:(button.currentTitle ?: @"")];
             BOOL isEmoji = [accessibility containsString:@"表情"] || [accessibility containsString:@"emoji"] ||
                            (CGRectGetMidX(button.frame) > CGRectGetWidth(host.bounds) * 0.66 && CGRectGetMidX(button.frame) < CGRectGetWidth(host.bounds) * 0.90);
-            if (isEmoji) button.hidden = WTInputBool(@"wt.input.sms.hideEmoji", NO);
+            if (isEmoji) {
+                if (!objc_getAssociatedObject(button, &WTOriginalButtonHiddenKey))
+                    objc_setAssociatedObject(button, &WTOriginalButtonHiddenKey, @(button.hidden), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+                BOOL wasHidden = [objc_getAssociatedObject(button, &WTOriginalButtonHiddenKey) boolValue];
+                button.hidden = wasHidden || WTInputBool(@"wt.input.sms.hideEmoji", NO);
+            }
             NSInteger iconColor = [NSUserDefaults.standardUserDefaults integerForKey:@"wt.input.icon.color"];
             button.tintColor = iconColor == 1 ? [UIColor colorWithRed:0.02 green:0.53 blue:0.30 alpha:1] :
                                (iconColor == 2 ? UIColor.whiteColor : [UIColor colorWithWhite:0.12 alpha:1]);
