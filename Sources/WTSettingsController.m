@@ -7,6 +7,7 @@
 @property(nonatomic, copy) NSString *symbol;
 @property(nonatomic, assign) BOOL isToggle;
 @property(nonatomic, assign) BOOL enabled;
+@property(nonatomic, copy) NSString *defaultsKey;
 @end
 @implementation WTSettingItem
 @end
@@ -68,6 +69,7 @@
             _toggle.translatesAutoresizingMaskIntoConstraints = NO;
             _toggle.on = item.enabled;
             _toggle.onTintColor = [UIColor colorWithRed:0.02 green:0.55 blue:0.31 alpha:1];
+            _toggle.accessibilityIdentifier = item.defaultsKey;
             [_toggle addTarget:self action:@selector(toggleChanged:) forControlEvents:UIControlEventValueChanged];
             [self addSubview:_toggle];
         }
@@ -96,7 +98,7 @@
     }
     return self;
 }
-- (void)toggleChanged:(UISwitch *)sender { self.item.enabled = sender.isOn; }
+- (void)toggleChanged:(UISwitch *)sender { self.item.enabled = sender.isOn; if (self.item.defaultsKey.length) [NSUserDefaults.standardUserDefaults setBool:sender.isOn forKey:self.item.defaultsKey]; }
 @end
 
 @interface WTSettingsController () <UISearchBarDelegate>
@@ -121,6 +123,8 @@
 - (WTSettingItem *)item:(NSString *)title subtitle:(NSString *)subtitle symbol:(NSString *)symbol toggle:(BOOL)toggle enabled:(BOOL)enabled {
     WTSettingItem *item = [WTSettingItem new];
     item.title = title; item.subtitle = subtitle; item.symbol = symbol; item.isToggle = toggle; item.enabled = enabled;
+    if ([title isEqualToString:@"总开关"]) { item.defaultsKey = @"wt.global.enabled"; item.enabled = [NSUserDefaults.standardUserDefaults objectForKey:item.defaultsKey] ? [NSUserDefaults.standardUserDefaults boolForKey:item.defaultsKey] : YES; }
+    if ([title isEqualToString:@"开启磨砂"]) { item.defaultsKey = @"wt.glass.enabled"; item.enabled = [NSUserDefaults.standardUserDefaults objectForKey:item.defaultsKey] ? [NSUserDefaults.standardUserDefaults boolForKey:item.defaultsKey] : YES; }
     return item;
 }
 
