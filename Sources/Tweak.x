@@ -83,7 +83,14 @@ static void WTApplyChatInputGlass(UIView *root) {
             button.layer.cornerRadius = smsMode ? 16 : (style == 2 ? 18 : 22);
             button.layer.borderWidth = 0.65;
             button.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.55].CGColor;
-            button.backgroundColor = [UIColor colorWithWhite:1 alpha:WTInputBool(@"wt.input.jelly.menu", NO) ? 0.42 : 0.20];
+            BOOL isPlus = [accessibility containsString:@"plus"] || [accessibility containsString:@"添加"] || [accessibility containsString:@"更多"];
+            button.backgroundColor = [UIColor colorWithWhite:1 alpha:(isPlus && WTInputBool(@"wt.input.jelly.menu", NO)) ? 0.42 : 0.20];
+            if (smsMode && button.currentImage) {
+                NSInteger iconWeight = [NSUserDefaults.standardUserDefaults integerForKey:@"wt.input.sms.icon"];
+                UIImageSymbolWeight weight = iconWeight == 1 ? UIImageSymbolWeightBold : (iconWeight == 2 ? UIImageSymbolWeightLight : UIImageSymbolWeightRegular);
+                UIImageSymbolConfiguration *configuration = [UIImageSymbolConfiguration configurationWithPointSize:20 weight:weight];
+                [button setPreferredSymbolConfiguration:configuration forImageInState:UIControlStateNormal];
+            }
             button.clipsToBounds = YES;
         }
         for (UIView *child in v.subviews) [nodes addObject:child];
