@@ -145,7 +145,7 @@ static void WTApplyChatInputGlass(UIView *root) {
             [glass.bottomAnchor constraintEqualToAnchor:host.bottomAnchor]
         ]];
     }
-    glass.effect = WTInputBool(@"wt.glass.enabled", YES) ? [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial] : nil;
+    glass.effect = (WTInputBool(@"wt.glass.enabled", YES) && WTInputBool(@"wt.input.blur.enabled", YES)) ? [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial] : nil;
     // Keep WeChat's original container clipping and hit-testing intact.
     glass.layer.cornerRadius = radius;
     glass.layer.cornerCurve = kCACornerCurveContinuous;
@@ -163,6 +163,8 @@ static void WTApplyChatInputGlass(UIView *root) {
             editor = (UITextView *)v;
             editor.backgroundColor = UIColor.clearColor;
             editor.layer.cornerRadius = style == 2 ? 16 : (style == 1 ? 24 : 20);
+        } else if ([v isKindOfClass:UITextField.class]) {
+            ((UITextField *)v).backgroundColor = UIColor.clearColor;
         }
         if ([v isKindOfClass:UIButton.class]) {
             UIButton *button = (UIButton *)v;
@@ -170,9 +172,9 @@ static void WTApplyChatInputGlass(UIView *root) {
             BOOL isEmoji = [accessibility containsString:@"表情"] || [accessibility containsString:@"emoji"] ||
                            (CGRectGetMidX(button.frame) > CGRectGetWidth(host.bounds) * 0.66 && CGRectGetMidX(button.frame) < CGRectGetWidth(host.bounds) * 0.90);
             if (isEmoji) button.hidden = WTInputBool(@"wt.input.sms.hideEmoji", NO);
-            NSString *iconColorName = [NSUserDefaults.standardUserDefaults stringForKey:@"wt.input.icon.color"] ?: @"dark";
-            button.tintColor = [iconColorName isEqualToString:@"green"] ? [UIColor colorWithRed:0.02 green:0.53 blue:0.30 alpha:1] :
-                               ([iconColorName isEqualToString:@"white"] ? UIColor.whiteColor : [UIColor colorWithWhite:0.12 alpha:1]);
+            NSInteger iconColor = [NSUserDefaults.standardUserDefaults integerForKey:@"wt.input.icon.color"];
+            button.tintColor = iconColor == 1 ? [UIColor colorWithRed:0.02 green:0.53 blue:0.30 alpha:1] :
+                               (iconColor == 2 ? UIColor.whiteColor : [UIColor colorWithWhite:0.12 alpha:1]);
             button.layer.cornerCurve = kCACornerCurveContinuous;
             button.layer.cornerRadius = smsMode ? (smsSize == 1 ? 13 : 18) : (style == 2 ? 18 : 22);
             button.layer.borderWidth = 0.65;
@@ -180,9 +182,9 @@ static void WTApplyChatInputGlass(UIView *root) {
             BOOL isPlus = [accessibility containsString:@"plus"] || [accessibility containsString:@"添加"] || [accessibility containsString:@"更多"] ||
                           CGRectGetMidX(button.frame) >= CGRectGetWidth(host.bounds) * 0.88;
             BOOL jelly = WTInputBool(@"wt.input.jelly.menu", NO);
-            NSString *menuTheme = [NSUserDefaults.standardUserDefaults stringForKey:@"wt.input.jelly.theme"] ?: @"system";
-            UIColor *buttonFill = [menuTheme isEqualToString:@"dark"] ? [UIColor colorWithWhite:0.12 alpha:0.72] :
-                                  ([menuTheme isEqualToString:@"light"] ? [UIColor colorWithWhite:1 alpha:0.82] : [UIColor colorWithWhite:1 alpha:0.20]);
+            NSInteger menuTheme = [NSUserDefaults.standardUserDefaults integerForKey:@"wt.input.jelly.theme"];
+            UIColor *buttonFill = menuTheme == 2 ? [UIColor colorWithWhite:0.12 alpha:0.72] :
+                                  (menuTheme == 1 ? [UIColor colorWithWhite:1 alpha:0.82] : [UIColor colorWithWhite:1 alpha:0.20]);
             button.backgroundColor = (isPlus && jelly) ? buttonFill : [UIColor colorWithWhite:1 alpha:0.20];
             if (smsMode && button.currentImage) {
                 NSInteger iconWeight = [NSUserDefaults.standardUserDefaults integerForKey:@"wt.input.sms.icon"];
