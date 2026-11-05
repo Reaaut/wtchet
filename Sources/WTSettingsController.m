@@ -98,7 +98,11 @@
     }
     return self;
 }
-- (void)toggleChanged:(UISwitch *)sender { self.item.enabled = sender.isOn; if (self.item.defaultsKey.length) [NSUserDefaults.standardUserDefaults setBool:sender.isOn forKey:self.item.defaultsKey]; }
+- (void)toggleChanged:(UISwitch *)sender {
+    self.item.enabled = sender.isOn;
+    if (self.item.defaultsKey.length) [NSUserDefaults.standardUserDefaults setBool:sender.isOn forKey:self.item.defaultsKey];
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"wt.input.settings.changed" object:nil];
+}
 @end
 
 @interface WTSettingsController () <UISearchBarDelegate>
