@@ -14,6 +14,7 @@ jobs:
 
       - name: Install Theos
         run: |
+          export THEOS="$HOME/theos"
           git clone --recursive https://github.com/theos/theos.git "$THEOS"
           git clone https://github.com/theos/sdks.git "$RUNNER_TEMP/sdks"
           mkdir -p "$THEOS/sdks"
