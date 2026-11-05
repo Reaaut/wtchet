@@ -28,6 +28,53 @@ static UIView *WTFindComposerContainer(UIView *root) {
     }
     return nil;
 }
+static void WTUpdateGlowBorder(UIVisualEffectView *glass, CGFloat radius) {
+    NSString *layerName = @"wtchet.glow.border";
+    CAGradientLayer *gradient = nil;
+    for (CALayer *layer in glass.layer.sublayers) {
+        if ([layer.name isEqualToString:layerName]) { gradient = (CAGradientLayer *)layer; break; }
+    }
+    BOOL enabled = WTInputBool(@"wt.input.glow.enabled", NO);
+    if (!enabled) {
+        [gradient removeFromSuperlayer];
+        return;
+    }
+    NSString *colorName = [NSUserDefaults.standardUserDefaults stringForKey:@"wt.input.glow.color"] ?: @"green";
+    UIColor *base = [colorName isEqualToString:@"blue"] ? [UIColor colorWithRed:0.20 green:0.62 blue:1 alpha:1] :
+                    ([colorName isEqualToString:@"purple"] ? [UIColor colorWithRed:0.62 green:0.35 blue:1 alpha:1] :
+                    ([colorName isEqualToString:@"white"] ? UIColor.whiteColor : [UIColor colorWithRed:0.08 green:0.72 blue:0.43 alpha:1]));
+    if (!gradient) {
+        gradient = [CAGradientLayer layer];
+        gradient.name = layerName;
+        gradient.startPoint = CGPointMake(0, 0.5);
+        gradient.endPoint = CGPointMake(1, 0.5);
+        gradient.locations = @[@0, @0.35, @0.7, @1];
+        CAShapeLayer *mask = [CAShapeLayer layer];
+        mask.fillColor = UIColor.clearColor.CGColor;
+        mask.strokeColor = UIColor.whiteColor.CGColor;
+        mask.lineWidth = 2.0;
+        gradient.mask = mask;
+        [glass.layer addSublayer:gradient];
+    }
+    gradient.frame = glass.bounds;
+    CAShapeLayer *mask = (CAShapeLayer *)gradient.mask;
+    mask.frame = gradient.bounds;
+    mask.path = [UIBezierPath bezierPathWithRoundedRect:CGRectInset(gradient.bounds, 1, 1) cornerRadius:MAX(2, radius - 1)].CGPath;
+    UIColor *dim = [base colorWithAlphaComponent:0.12];
+    UIColor *bright = [base colorWithAlphaComponent:0.98];
+    gradient.colors = @[(id)dim.CGColor, (id)bright.CGColor, (id)dim.CGColor, (id)bright.CGColor];
+    if (![gradient animationForKey:@"wtchet.glow.rotation"]) {
+        CGFloat speed = [NSUserDefaults.standardUserDefaults objectForKey:@"wt.input.glow.speed"] ? [NSUserDefaults.standardUserDefaults floatForKey:@"wt.input.glow.speed"] : 1.0;
+        speed = MIN(2.5, MAX(0.5, speed));
+        CABasicAnimation *spin = [CABasicAnimation animationWithKeyPath:@"transform.rotation.z"];
+        spin.fromValue = @0;
+        spin.toValue = @(M_PI * 2);
+        spin.duration = 3.6 / speed;
+        spin.repeatCount = HUGE_VALF;
+        [gradient addAnimation:spin forKey:@"wtchet.glow.rotation"];
+    }
+}
+
 static void WTApplyChatInputGlass(UIView *root) {
     if (!NSThread.isMainThread || !root) return;
     UIView *host = WTFindComposerContainer(root);
@@ -58,6 +105,7 @@ static void WTApplyChatInputGlass(UIView *root) {
     glass.clipsToBounds = YES;
     glass.layer.borderWidth = 0.8;
     glass.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.62].CGColor;
+    WTUpdateGlowBorder(glass, radius);
 
     UITextView *editor = nil;
     NSMutableArray<UIView *> *nodes = [NSMutableArray arrayWithObject:host];
@@ -96,15 +144,7 @@ static void WTApplyChatInputGlass(UIView *root) {
         }
         for (UIView *child in v.subviews) [nodes addObject:child];
     }
-    BOOL glow = WTInputBool(@"wt.input.glow.enabled", NO);
-    NSString *glowColor = [NSUserDefaults.standardUserDefaults stringForKey:@"wt.input.glow.color"] ?: @"green";
-    UIColor *shadow = [glowColor isEqualToString:@"blue"] ? [UIColor colorWithRed:0.20 green:0.62 blue:1 alpha:1] :
-                      ([glowColor isEqualToString:@"purple"] ? [UIColor colorWithRed:0.62 green:0.35 blue:1 alpha:1] :
-                      ([glowColor isEqualToString:@"white"] ? UIColor.whiteColor : [UIColor colorWithRed:0.08 green:0.72 blue:0.43 alpha:1]));
-    glass.layer.shadowColor = shadow.CGColor;
-    glass.layer.shadowOpacity = glow ? 0.48 : 0.0;
-    glass.layer.shadowRadius = glow ? 9.0 : 0.0;
-    glass.layer.shadowOffset = CGSizeZero;
+
 }
 
 static UIViewController *WTTopController(UIViewController *controller) {
