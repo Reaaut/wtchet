@@ -29,8 +29,12 @@ jobs:
 
       - name: Verify package
         run: |
-          test -f packages/com.reaaut.wtchet_0.1.0_iphoneos-arm64.deb
-          dpkg-deb -f packages/com.reaaut.wtchet_0.1.0_iphoneos-arm64.deb Package Version Architecture
+          DEB="$(find packages -maxdepth 1 -name '*.deb' -print -quit)"
+          test -n "$DEB"
+          echo "Built package: $DEB"
+          dpkg-deb -f "$DEB" Package Version Architecture
+          test "$(dpkg-deb -f "$DEB" Package)" = "com.reaaut.wtchet"
+          test "$(dpkg-deb -f "$DEB" Architecture)" = "iphoneos-arm64"
 
       - name: Upload DEB
         uses: actions/upload-artifact@v4
