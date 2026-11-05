@@ -1,6 +1,6 @@
 Package: com.reaaut.wtchet
 Name: wtchet
-Version: 0.1.3
+Version: 0.1.4
 Architecture: iphoneos-arm64
 Description: wtchet frosted chat composer and settings for WeChat.
 Maintainer: Reaaut
