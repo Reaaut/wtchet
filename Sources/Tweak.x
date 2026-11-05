@@ -57,6 +57,8 @@ static void WTUpdateGlowBorder(UIVisualEffectView *glass, CGFloat radius) {
         [glass.layer addSublayer:gradient];
     }
     gradient.frame = glass.bounds;
+    CGFloat speed = [NSUserDefaults.standardUserDefaults objectForKey:@"wt.input.glow.speed"] ? [NSUserDefaults.standardUserDefaults floatForKey:@"wt.input.glow.speed"] : 1.0;
+    gradient.speed = MIN(2.5, MAX(0.5, speed));
     CAShapeLayer *mask = (CAShapeLayer *)gradient.mask;
     mask.frame = gradient.bounds;
     mask.path = [UIBezierPath bezierPathWithRoundedRect:CGRectInset(gradient.bounds, 1, 1) cornerRadius:MAX(2, radius - 1)].CGPath;
@@ -64,12 +66,10 @@ static void WTUpdateGlowBorder(UIVisualEffectView *glass, CGFloat radius) {
     UIColor *bright = [base colorWithAlphaComponent:0.98];
     gradient.colors = @[(id)dim.CGColor, (id)bright.CGColor, (id)dim.CGColor, (id)bright.CGColor];
     if (![gradient animationForKey:@"wtchet.glow.rotation"]) {
-        CGFloat speed = [NSUserDefaults.standardUserDefaults objectForKey:@"wt.input.glow.speed"] ? [NSUserDefaults.standardUserDefaults floatForKey:@"wt.input.glow.speed"] : 1.0;
-        speed = MIN(2.5, MAX(0.5, speed));
         CABasicAnimation *spin = [CABasicAnimation animationWithKeyPath:@"transform.rotation.z"];
         spin.fromValue = @0;
         spin.toValue = @(M_PI * 2);
-        spin.duration = 3.6 / speed;
+        spin.duration = 3.6;
         spin.repeatCount = HUGE_VALF;
         [gradient addAnimation:spin forKey:@"wtchet.glow.rotation"];
     }
@@ -83,7 +83,8 @@ static void WTApplyChatInputGlass(UIView *root) {
     if (!enabled) { [[host viewWithTag:WTInputGlassTag] removeFromSuperview]; return; }
     NSInteger style = [NSUserDefaults.standardUserDefaults integerForKey:@"wt.input.preview.style"];
     BOOL smsMode = WTInputBool(@"wt.input.sms.enabled", NO);
-    CGFloat radius = smsMode ? 18.0 : (style == 2 ? 17.0 : (style == 1 ? 29.0 : 23.0));
+    NSInteger smsSize = [NSUserDefaults.standardUserDefaults integerForKey:@"wt.input.sms.size"];
+    CGFloat radius = smsMode ? (smsSize == 1 ? 13.0 : 20.0) : (style == 2 ? 17.0 : (style == 1 ? 29.0 : 23.0));
     UIVisualEffectView *glass = (UIVisualEffectView *)[host viewWithTag:WTInputGlassTag];
     if (!glass) {
         glass = [[UIVisualEffectView alloc] initWithEffect:WTInputBool(@"wt.glass.enabled", YES) ? [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial] : nil];
@@ -129,7 +130,7 @@ static void WTApplyChatInputGlass(UIView *root) {
             if (WTInputBool(@"wt.input.sms.hideEmoji", NO) && ([accessibility containsString:@"表情"] || [accessibility containsString:@"emoji"])) button.hidden = YES;
             button.tintColor = [UIColor colorWithWhite:0.12 alpha:1];
             button.layer.cornerCurve = kCACornerCurveContinuous;
-            button.layer.cornerRadius = smsMode ? 16 : (style == 2 ? 18 : 22);
+            button.layer.cornerRadius = smsMode ? (smsSize == 1 ? 13 : 18) : (style == 2 ? 18 : 22);
             button.layer.borderWidth = 0.65;
             button.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.55].CGColor;
             BOOL isPlus = [accessibility containsString:@"plus"] || [accessibility containsString:@"添加"] || [accessibility containsString:@"更多"];
@@ -222,7 +223,7 @@ static void WTInstallLauncher(void) {
 %ctor {
     @autoreleasepool {
         if ([NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.tencent.xin"]) {
-            NSLog(@"[wtchet] v0.1.0 settings prototype loaded");
+            NSLog(@"[wtchet] v0.1.2 composer glass loaded");
         }
     }
 }
