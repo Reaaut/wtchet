@@ -117,6 +117,23 @@ static void WTPostInputSettingsChanged(void) {
     ]];
     return b;
 }
+
+- (void)captureInputHierarchy {
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"wt.input.hierarchy.capture" object:nil];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(0.8*NSEC_PER_SEC)),dispatch_get_main_queue(), ^{
+        NSString *dump=[NSUserDefaults.standardUserDefaults stringForKey:@"wt.input.hierarchy.lastCapture"];
+        if(dump.length) {
+            UIPasteboard.generalPasteboard.string=dump;
+            UIAlertController *alert=[UIAlertController alertControllerWithTitle:@"结构采集完成" message:@"已复制当前界面视图结构。请回到微信聊天页面，粘贴发送给我。不会采集聊天文字或消息内容。" preferredStyle:UIAlertControllerStyleAlert];
+            [alert addAction:[UIAlertAction actionWithTitle:@"知道了" style:UIAlertActionStyleDefault handler:nil]];
+            [self presentViewController:alert animated:YES completion:nil];
+        } else {
+            UIAlertController *alert=[UIAlertController alertControllerWithTitle:@"采集失败" message:@"没有取得视图结构，请在聊天页面打开设置后重试。" preferredStyle:UIAlertControllerStyleAlert];
+            [alert addAction:[UIAlertAction actionWithTitle:@"知道了" style:UIAlertActionStyleDefault handler:nil]];
+            [self presentViewController:alert animated:YES completion:nil];
+        }
+    });
+}
 - (void)buildPage {
     self.scroll=[UIScrollView new]; self.scroll.translatesAutoresizingMaskIntoConstraints=NO; self.scroll.alwaysBounceVertical=YES;
     [self.view addSubview:self.scroll];
@@ -132,6 +149,11 @@ static void WTPostInputSettingsChanged(void) {
         [self.stack.bottomAnchor constraintEqualToAnchor:self.scroll.contentLayoutGuide.bottomAnchor constant:-22],
         [self.stack.widthAnchor constraintEqualToAnchor:self.scroll.frameLayoutGuide.widthAnchor]
     ]];
+
+    [self addHeading:@"问题诊断"];
+    UIVisualEffectView *diagnostic=[self panel]; UIStackView *diagnosticRows=[self verticalStack];
+    [diagnosticRows addArrangedSubview:[self disclosureRow:@"采集输入栏结构" detail:@"复制当前微信界面视图层级，不读取聊天内容" action:@selector(captureInputHierarchy)]];
+    [self addPanel:diagnostic content:diagnosticRows inset:0];
 
     [self addHeading:@"输入框"];
     UIVisualEffectView *base=[self panel]; UIStackView *baseRows=[self verticalStack];
