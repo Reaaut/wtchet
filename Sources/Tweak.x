@@ -1,4 +1,5 @@
 #import <UIKit/UIKit.h>
+#import <QuartzCore/QuartzCore.h>
 #import "WTSettingsController.h"
 #import <objc/runtime.h>
 
@@ -296,15 +297,46 @@ static void WTRestoreComposerAncestors(UIView *root, UIView *host) {
     }
     WTRestoreComposerChildren(host);
 }
+static void WTRestoreComposerTree(UIView *root) {
+    if(!root) return;
+    NSMutableArray<UIView *> *stack=[NSMutableArray arrayWithObject:root];
+    NSUInteger count=0;
+    while(stack.count && count++<1600) {
+        UIView *v=stack.lastObject; [stack removeLastObject];
+        id backdrop=objc_getAssociatedObject(v,&WTOriginalBackdropBackgroundKey);
+        if(backdrop) v.backgroundColor=(backdrop==NSNull.null)?nil:backdrop;
+        id ime=objc_getAssociatedObject(v,&WTOriginalIMEBackgroundKey);
+        if(ime) v.backgroundColor=(ime==NSNull.null)?nil:ime;
+        [[v viewWithTag:WTComposerBackdropTag] removeFromSuperview];
+        [[v viewWithTag:WTInputMethodGlassTag] removeFromSuperview];
+        if(objc_getAssociatedObject(v,&WTOriginalHostLayerStyleKey)) {
+            id bg=objc_getAssociatedObject(v,&WTOriginalHostBackgroundKey);
+            if(bg) v.backgroundColor=(bg==NSNull.null)?nil:bg;
+            NSValue *transform=objc_getAssociatedObject(v,&WTOriginalHostTransformKey);
+            if(transform) v.transform=transform.CGAffineTransformValue;
+            NSDictionary *layerStyle=objc_getAssociatedObject(v,&WTOriginalHostLayerStyleKey);
+            v.layer.cornerRadius=[layerStyle[@"radius"] doubleValue];
+            v.layer.borderWidth=[layerStyle[@"borderWidth"] doubleValue];
+            id border=layerStyle[@"border"];
+            v.layer.borderColor=(border==NSNull.null)?nil:[(UIColor *)border CGColor];
+            v.clipsToBounds=[layerStyle[@"clips"] boolValue];
+            WTRestoreComposerChildren(v);
+        }
+        for(UIView *child in v.subviews) [stack addObject:child];
+    }
+}
 static void WTApplyChatInputGlass(UIView *root) {
     if (!NSThread.isMainThread || !root) return;
     CFTimeInterval now=CACurrentMediaTime();
     NSNumber *last=objc_getAssociatedObject(root,&WTLastComposerApplyTimeKey);
     if(last && now-last.doubleValue<0.10) return;
     objc_setAssociatedObject(root,&WTLastComposerApplyTimeKey,@(now),OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    UIView *host = WTFindComposerContainer(root);
-    if (!host) return;
     BOOL enabled = WTInputBool(@"wt.global.enabled", YES) && WTInputBool(@"wt.input.enabled", YES);
+    UIView *host = WTFindComposerContainer(root);
+    if (!host) {
+        if(!enabled) { WTRestoreComposerTree(root); WTApplyInputMethodArea(root); }
+        return;
+    }
     if (!objc_getAssociatedObject(host, &WTOriginalHostBackgroundKey)) {
         id original = host.backgroundColor ?: (id)NSNull.null;
         UIColor *borderColor=host.layer.borderColor?[UIColor colorWithCGColor:host.layer.borderColor]:nil;
