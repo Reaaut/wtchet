@@ -286,7 +286,9 @@
     [self.navigationController pushViewController:placeholder animated:YES];
 }
 
-- (void)closeSettings { [self dismissViewControllerAnimated:YES completion:nil]; }\n\n- (void)showLogPlaceholder {
+- (void)closeSettings { [self dismissViewControllerAnimated:YES completion:nil]; }
+
+- (void)showLogPlaceholder {
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"wtchet 日志" message:@"当前为设置界面原型版本，日志模块尚未接入。" preferredStyle:UIAlertControllerStyleAlert];
     [alert addAction:[UIAlertAction actionWithTitle:@"知道了" style:UIAlertActionStyleDefault handler:nil]];
     [self presentViewController:alert animated:YES completion:nil];
