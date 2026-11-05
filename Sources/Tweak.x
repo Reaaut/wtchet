@@ -164,16 +164,12 @@ static void WTApplyChatInputGlass(UIView *root) {
             editor.backgroundColor = UIColor.clearColor;
             editor.layer.cornerRadius = style == 2 ? 16 : (style == 1 ? 24 : 20);
         }
-        if ([v isKindOfClass:UILabel.class] && WTInputBool(@"wt.input.placeholder.enabled", NO)) {
-            UILabel *label = (UILabel *)v;
-            if ([label.text containsString:@"发送消息"] || [label.text containsString:@"输入"]) {
-                label.text = [NSUserDefaults.standardUserDefaults stringForKey:@"wt.input.placeholder.text"] ?: @"发送消息";
-            }
-        }
         if ([v isKindOfClass:UIButton.class]) {
             UIButton *button = (UIButton *)v;
             NSString *accessibility = [[(button.accessibilityLabel ?: @"") lowercaseString] stringByAppendingString:(button.currentTitle ?: @"")];
-            if (WTInputBool(@"wt.input.sms.hideEmoji", NO) && ([accessibility containsString:@"表情"] || [accessibility containsString:@"emoji"])) button.hidden = YES;
+            BOOL isEmoji = [accessibility containsString:@"表情"] || [accessibility containsString:@"emoji"] ||
+                           (CGRectGetMidX(button.frame) > CGRectGetWidth(host.bounds) * 0.66 && CGRectGetMidX(button.frame) < CGRectGetWidth(host.bounds) * 0.90);
+            if (isEmoji) button.hidden = WTInputBool(@"wt.input.sms.hideEmoji", NO);
             NSString *iconColorName = [NSUserDefaults.standardUserDefaults stringForKey:@"wt.input.icon.color"] ?: @"dark";
             button.tintColor = [iconColorName isEqualToString:@"green"] ? [UIColor colorWithRed:0.02 green:0.53 blue:0.30 alpha:1] :
                                ([iconColorName isEqualToString:@"white"] ? UIColor.whiteColor : [UIColor colorWithWhite:0.12 alpha:1]);
@@ -181,7 +177,8 @@ static void WTApplyChatInputGlass(UIView *root) {
             button.layer.cornerRadius = smsMode ? (smsSize == 1 ? 13 : 18) : (style == 2 ? 18 : 22);
             button.layer.borderWidth = 0.65;
             button.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.55].CGColor;
-            BOOL isPlus = [accessibility containsString:@"plus"] || [accessibility containsString:@"添加"] || [accessibility containsString:@"更多"];
+            BOOL isPlus = [accessibility containsString:@"plus"] || [accessibility containsString:@"添加"] || [accessibility containsString:@"更多"] ||
+                          CGRectGetMidX(button.frame) >= CGRectGetWidth(host.bounds) * 0.88;
             BOOL jelly = WTInputBool(@"wt.input.jelly.menu", NO);
             NSString *menuTheme = [NSUserDefaults.standardUserDefaults stringForKey:@"wt.input.jelly.theme"] ?: @"system";
             UIColor *buttonFill = [menuTheme isEqualToString:@"dark"] ? [UIColor colorWithWhite:0.12 alpha:0.72] :
@@ -276,8 +273,39 @@ static void WTInstallLauncher(void) {
 }
 - (void)viewDidLayoutSubviews {
     %orig;
-    // Do not depend on a single private WeChat controller class name.
     WTApplyChatInputGlass(self.view);
+    NSString *controllerName = NSStringFromClass(self.class).lowercaseString;
+    if (WTInputBool(@"wt.input.jelly.menu", NO) &&
+        ([controllerName containsString:@"menu"] || [controllerName containsString:@"actionsheet"] ||
+         [controllerName containsString:@"popover"] || [controllerName containsString:@"more"])) {
+        self.view.backgroundColor = UIColor.clearColor;
+        self.view.layer.cornerRadius = 22;
+        self.view.clipsToBounds = YES;
+        for (UIView *subview in self.view.subviews) {
+            if ([subview isKindOfClass:UIVisualEffectView.class]) return;
+        }
+        UIVisualEffectView *menuGlass = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial]];
+        menuGlass.frame = self.view.bounds;
+        menuGlass.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        menuGlass.userInteractionEnabled = NO;
+        menuGlass.layer.cornerRadius = 22;
+        menuGlass.clipsToBounds = YES;
+        [self.view insertSubview:menuGlass atIndex:0];
+    }
+}
+%end
+
+%hook UIView
+- (void)layoutSubviews {
+    %orig;
+    if (![NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.tencent.xin"]) return;
+    NSString *name = NSStringFromClass(self.class).lowercaseString;
+    if ([name containsString:@"inputtool"] || [name containsString:@"inputbar"] ||
+        [name containsString:@"chatinput"] || [name containsString:@"composer"]) {
+        UIWindow *window = self.window;
+        UIViewController *root = window.rootViewController;
+        if (root) WTApplyChatInputGlass(root.view);
+    }
 }
 %end
 
@@ -294,7 +322,12 @@ static void WTInstallLauncher(void) {
 %ctor {
     @autoreleasepool {
         if ([NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.tencent.xin"]) {
-            NSLog(@"[wtchet] v0.1.2 composer glass loaded");
+            NSLog(@"[wtchet] composer styling runtime loaded");
+            [[NSNotificationCenter defaultCenter] addObserverForName:@"wt.input.settings.changed" object:nil queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification *note) {
+                UIWindow *window = WTKeyWindow();
+                UIViewController *root = window.rootViewController;
+                if (root) WTApplyChatInputGlass(root.view);
+            }];
         }
     }
 }
