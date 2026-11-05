@@ -290,6 +290,8 @@ static void WTRestoreComposerAncestors(UIView *root, UIView *host) {
     for(UIView *v=host.superview;v;v=v.superview) {
         id original=objc_getAssociatedObject(v,&WTOriginalBackdropBackgroundKey);
         if(original) v.backgroundColor=(original==NSNull.null)?nil:original;
+        id savedEffect=objc_getAssociatedObject(v,&WTOriginalAncestorEffectKey);
+        if(savedEffect) ((UIVisualEffectView *)v).effect=(savedEffect==NSNull.null)?nil:savedEffect;
         [[v viewWithTag:WTComposerBackdropTag] removeFromSuperview];
         if(v==root) break;
     }
@@ -316,6 +318,8 @@ static void WTRestoreComposerTree(UIView *root) {
         UIView *v=stack.lastObject; [stack removeLastObject];
         id backdrop=objc_getAssociatedObject(v,&WTOriginalBackdropBackgroundKey);
         if(backdrop) v.backgroundColor=(backdrop==NSNull.null)?nil:backdrop;
+        id savedEffect=objc_getAssociatedObject(v,&WTOriginalAncestorEffectKey);
+        if(savedEffect) ((UIVisualEffectView *)v).effect=(savedEffect==NSNull.null)?nil:savedEffect;
         id ime=objc_getAssociatedObject(v,&WTOriginalIMEBackgroundKey);
         if(ime) v.backgroundColor=(ime==NSNull.null)?nil:ime;
         [[v viewWithTag:WTComposerBackdropTag] removeFromSuperview];
