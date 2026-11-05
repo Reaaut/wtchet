@@ -81,6 +81,7 @@ static void WTApplyChatInputGlass(UIView *root) {
     if (!host) return;
     BOOL enabled = WTInputBool(@"wt.global.enabled", YES) && WTInputBool(@"wt.input.enabled", YES);
     if (!enabled) { [[host viewWithTag:WTInputGlassTag] removeFromSuperview]; return; }
+    host.backgroundColor = UIColor.clearColor;
     NSInteger style = [NSUserDefaults.standardUserDefaults integerForKey:@"wt.input.preview.style"];
     BOOL smsMode = WTInputBool(@"wt.input.sms.enabled", NO);
     NSInteger smsSize = [NSUserDefaults.standardUserDefaults integerForKey:@"wt.input.sms.size"];
@@ -211,12 +212,25 @@ static void WTInstallLauncher(void) {
 %hook UIViewController
 - (void)viewDidAppear:(BOOL)animated {
     %orig;
-    dispatch_async(dispatch_get_main_queue(), ^{ WTInstallLauncher(); });
+    dispatch_async(dispatch_get_main_queue(), ^{
+        WTInstallLauncher();
+        WTApplyChatInputGlass(self.view);
+    });
 }
 - (void)viewDidLayoutSubviews {
     %orig;
-    if (![NSStringFromClass(self.class) isEqualToString:@"BaseMsgContentViewController"]) return;
+    // Do not depend on a single private WeChat controller class name.
     WTApplyChatInputGlass(self.view);
+}
+%end
+
+%hook UITextView
+- (void)layoutSubviews {
+    %orig;
+    UIWindow *window = self.window;
+    if (!window || ![NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.tencent.xin"]) return;
+    UIViewController *rootController = window.rootViewController;
+    if (rootController) WTApplyChatInputGlass(rootController.view);
 }
 %end
 
