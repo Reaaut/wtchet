@@ -77,47 +77,42 @@ static UIView *WTFindComposerContainer(UIView *root) {
 static const NSInteger WTComposerBackdropTag = 0x57544247;
 static const NSInteger WTInputMethodGlassTag = 0x5754494D;
 static UIView *WTFindComposerBackdrop(UIView *root, UIView *host) {
+    if(!root || !host) return nil;
     CGFloat rw=CGRectGetWidth(root.bounds), rh=CGRectGetHeight(root.bounds);
-    UIView *best=nil; CGFloat bestScore=-CGFLOAT_MAX;
-    for(UIView *v=host.superview;v;v=v.superview) {
+    // Walk from the editor outward and stop at the first narrow bottom tray.
+    // Never fall back to an arbitrary ancestor: that can be the whole chat page.
+    for(UIView *v=host.superview;v && v!=root;v=v.superview) {
         CGRect f=[v convertRect:v.bounds toView:root];
         CGFloat w=CGRectGetWidth(f), h=CGRectGetHeight(f);
-        if(w>=rw*0.88 && h>=48 && h<=420 && CGRectGetMaxY(f)>=rh-100 && CGRectGetMinY(f)>=rh-440) {
-            CGFloat score=200.0-fabs(rh-CGRectGetMaxY(f))-fabs(h-125)*0.15;
-            if(score>bestScore){bestScore=score;best=v;}
-        }
-        if(v==root) break;
+        BOOL bottom=CGRectGetMaxY(f)>=rh-90 && CGRectGetMinY(f)>=rh-460;
+        if(w>=rw*0.88 && h>=44 && h<=190 && bottom) return v;
     }
-    return best ?: host.superview;
+    return nil;
 }
 static void WTApplyComposerBackdrop(UIView *root, UIView *host) {
     BOOL master=WTInputBool(@"wt.global.enabled",YES) && WTInputBool(@"wt.input.enabled",YES);
     BOOL hide=master && WTInputBool(@"wt.input.nativeBackground.hide",YES);
     BOOL blur=master && WTInputBool(@"wt.input.outerBlur.enabled",YES);
     UIView *backdrop=WTFindComposerBackdrop(root,host);
-    // The native tray can be several wrappers above the editor. Clear every
-    // wrapper up to the chat root so the chat wallpaper remains visible.
-    for(UIView *v=host.superview;v;v=v.superview) {
-        if(!objc_getAssociatedObject(v,&WTOriginalBackdropBackgroundKey)) {
-            id original=v.backgroundColor ?: (id)NSNull.null;
-            objc_setAssociatedObject(v,&WTOriginalBackdropBackgroundKey,original,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        }
-        if([v isKindOfClass:UIVisualEffectView.class] && !objc_getAssociatedObject(v,&WTOriginalAncestorEffectKey)) {
-            UIVisualEffect *effect=((UIVisualEffectView *)v).effect;
-            objc_setAssociatedObject(v,&WTOriginalAncestorEffectKey,effect ?: (id)NSNull.null,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        }
-        if(hide) {
-            v.backgroundColor=UIColor.clearColor;
-            if([v isKindOfClass:UIVisualEffectView.class]) ((UIVisualEffectView *)v).effect=nil;
-        } else {
-            id original=objc_getAssociatedObject(v,&WTOriginalBackdropBackgroundKey);
-            v.backgroundColor=(original==NSNull.null)?nil:original;
-            id effect=objc_getAssociatedObject(v,&WTOriginalAncestorEffectKey);
-            if(effect) ((UIVisualEffectView *)v).effect=(effect==NSNull.null)?nil:effect;
-        }
-        if(v==root) break;
-    }
     if(!backdrop) return;
+    if(!objc_getAssociatedObject(backdrop,&WTOriginalBackdropBackgroundKey)) {
+        id original=backdrop.backgroundColor ?: (id)NSNull.null;
+        objc_setAssociatedObject(backdrop,&WTOriginalBackdropBackgroundKey,original,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
+    if([backdrop isKindOfClass:UIVisualEffectView.class] && !objc_getAssociatedObject(backdrop,&WTOriginalAncestorEffectKey)) {
+        UIVisualEffect *originalEffect=((UIVisualEffectView *)backdrop).effect;
+        objc_setAssociatedObject(backdrop,&WTOriginalAncestorEffectKey,originalEffect ?: (id)NSNull.null,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
+    if(hide) {
+        backdrop.backgroundColor=UIColor.clearColor;
+        if([backdrop isKindOfClass:UIVisualEffectView.class]) ((UIVisualEffectView *)backdrop).effect=nil;
+    } else {
+        id original=objc_getAssociatedObject(backdrop,&WTOriginalBackdropBackgroundKey);
+        backdrop.backgroundColor=(original==NSNull.null)?nil:original;
+        id originalEffect=objc_getAssociatedObject(backdrop,&WTOriginalAncestorEffectKey);
+        if(originalEffect && [backdrop isKindOfClass:UIVisualEffectView.class])
+            ((UIVisualEffectView *)backdrop).effect=(originalEffect==NSNull.null)?nil:originalEffect;
+    }
     UIVisualEffectView *effect=(UIVisualEffectView *)[backdrop viewWithTag:WTComposerBackdropTag];
     if(!blur) { [effect removeFromSuperview]; return; }
     if(!effect) {
@@ -287,13 +282,14 @@ static void WTRestoreComposerChildren(UIView *host) {
     }
 }
 static void WTRestoreComposerAncestors(UIView *root, UIView *host) {
-    for(UIView *v=host.superview;v;v=v.superview) {
-        id original=objc_getAssociatedObject(v,&WTOriginalBackdropBackgroundKey);
-        if(original) v.backgroundColor=(original==NSNull.null)?nil:original;
-        id savedEffect=objc_getAssociatedObject(v,&WTOriginalAncestorEffectKey);
-        if(savedEffect) ((UIVisualEffectView *)v).effect=(savedEffect==NSNull.null)?nil:savedEffect;
-        [[v viewWithTag:WTComposerBackdropTag] removeFromSuperview];
-        if(v==root) break;
+    UIView *backdrop=WTFindComposerBackdrop(root,host);
+    if(backdrop) {
+        id original=objc_getAssociatedObject(backdrop,&WTOriginalBackdropBackgroundKey);
+        if(original) backdrop.backgroundColor=(original==NSNull.null)?nil:original;
+        id savedEffect=objc_getAssociatedObject(backdrop,&WTOriginalAncestorEffectKey);
+        if(savedEffect && [backdrop isKindOfClass:UIVisualEffectView.class])
+            ((UIVisualEffectView *)backdrop).effect=(savedEffect==NSNull.null)?nil:savedEffect;
+        [[backdrop viewWithTag:WTComposerBackdropTag] removeFromSuperview];
     }
     [[host viewWithTag:WTInputGlassTag] removeFromSuperview];
     id original=objc_getAssociatedObject(host,&WTOriginalHostBackgroundKey);
