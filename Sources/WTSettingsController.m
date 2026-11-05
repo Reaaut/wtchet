@@ -1,4 +1,5 @@
 #import "WTSettingsController.h"
+#import "WTInputSettingsController.h"
 
 @interface WTSettingItem : NSObject
 @property(nonatomic, copy) NSString *title;
@@ -249,6 +250,11 @@
 }
 
 - (void)cardTapped:(WTSettingsCard *)card {
+    if ([card.item.title containsString:@"输入框"]) {
+        WTInputSettingsController *input = [WTInputSettingsController new];
+        [self.navigationController pushViewController:input animated:YES];
+        return;
+    }
     if (card.item.isToggle) return;
     UIViewController *placeholder = [UIViewController new];
     placeholder.view.backgroundColor = [UIColor colorWithRed:0.89 green:0.94 blue:0.92 alpha:1];
