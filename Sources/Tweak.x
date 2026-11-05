@@ -11,6 +11,7 @@ static char WTOriginalBackdropBackgroundKey;
 static char WTOriginalIMEBackgroundKey;
 static char WTOriginalButtonStyleKey;
 static char WTOriginalEditorStyleKey;
+static char WTOriginalHostLayerStyleKey;
 static BOOL WTInputBool(NSString *key, BOOL fallback) {
     id value = [NSUserDefaults.standardUserDefaults objectForKey:key];
     return value ? [value boolValue] : fallback;
@@ -284,9 +285,14 @@ static void WTRestoreComposerAncestors(UIView *root, UIView *host) {
     if(original) host.backgroundColor=(original==NSNull.null)?nil:original;
     NSValue *transform=objc_getAssociatedObject(host,&WTOriginalHostTransformKey);
     if(transform) host.transform=transform.CGAffineTransformValue;
-    host.layer.cornerRadius=0;
-    host.layer.borderWidth=0;
-    host.clipsToBounds=NO;
+    NSDictionary *layerStyle=objc_getAssociatedObject(host,&WTOriginalHostLayerStyleKey);
+    if(layerStyle) {
+        host.layer.cornerRadius=[layerStyle[@"radius"] doubleValue];
+        host.layer.borderWidth=[layerStyle[@"borderWidth"] doubleValue];
+        id border=layerStyle[@"border"];
+        host.layer.borderColor=(border==NSNull.null)?nil:[(UIColor *)border CGColor];
+        host.clipsToBounds=[layerStyle[@"clips"] boolValue];
+    }
     WTRestoreComposerChildren(host);
 }
 static void WTApplyChatInputGlass(UIView *root) {
@@ -296,8 +302,10 @@ static void WTApplyChatInputGlass(UIView *root) {
     BOOL enabled = WTInputBool(@"wt.global.enabled", YES) && WTInputBool(@"wt.input.enabled", YES);
     if (!objc_getAssociatedObject(host, &WTOriginalHostBackgroundKey)) {
         id original = host.backgroundColor ?: (id)NSNull.null;
+        UIColor *borderColor=host.layer.borderColor?[UIColor colorWithCGColor:host.layer.borderColor]:nil;
         objc_setAssociatedObject(host, &WTOriginalHostBackgroundKey, original, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         objc_setAssociatedObject(host, &WTOriginalHostTransformKey, [NSValue valueWithCGAffineTransform:host.transform], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        objc_setAssociatedObject(host, &WTOriginalHostLayerStyleKey, @{@"radius":@(host.layer.cornerRadius),@"borderWidth":@(host.layer.borderWidth),@"border":borderColor ?: NSNull.null,@"clips":@(host.clipsToBounds)}, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
     NSInteger style = [NSUserDefaults.standardUserDefaults integerForKey:@"wt.input.preview.style"];
     BOOL smsMode = WTInputBool(@"wt.input.sms.enabled", NO);
