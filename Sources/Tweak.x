@@ -29,15 +29,17 @@ static UIView *WTFindComposerContainer(UIView *root) {
     return nil;
 }
 static void WTApplyChatInputGlass(UIView *root) {
-    if (!NSThread.isMainThread || !root || !WTInputBool(@"wt.global.enabled", YES) || !WTInputBool(@"wt.input.enabled", YES)) return;
+    if (!NSThread.isMainThread || !root) return;
     UIView *host = WTFindComposerContainer(root);
     if (!host) return;
+    BOOL enabled = WTInputBool(@"wt.global.enabled", YES) && WTInputBool(@"wt.input.enabled", YES);
+    if (!enabled) { [[host viewWithTag:WTInputGlassTag] removeFromSuperview]; return; }
     NSInteger style = [NSUserDefaults.standardUserDefaults integerForKey:@"wt.input.preview.style"];
     BOOL smsMode = WTInputBool(@"wt.input.sms.enabled", NO);
     CGFloat radius = smsMode ? 18.0 : (style == 2 ? 17.0 : (style == 1 ? 29.0 : 23.0));
     UIVisualEffectView *glass = (UIVisualEffectView *)[host viewWithTag:WTInputGlassTag];
     if (!glass) {
-        glass = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial]];
+        glass = [[UIVisualEffectView alloc] initWithEffect:WTInputBool(@"wt.glass.enabled", YES) ? [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial] : nil];
         glass.tag = WTInputGlassTag;
         glass.userInteractionEnabled = NO;
         glass.translatesAutoresizingMaskIntoConstraints = NO;
@@ -48,7 +50,6 @@ static void WTApplyChatInputGlass(UIView *root) {
             [glass.topAnchor constraintEqualToAnchor:host.topAnchor],
             [glass.bottomAnchor constraintEqualToAnchor:host.bottomAnchor]
         ]];
-        host.backgroundColor = UIColor.clearColor;
     }
     // Keep WeChat's original container clipping and hit-testing intact.
     glass.layer.cornerRadius = radius;
@@ -76,7 +77,7 @@ static void WTApplyChatInputGlass(UIView *root) {
         if ([v isKindOfClass:UIButton.class]) {
             UIButton *button = (UIButton *)v;
             NSString *accessibility = [[(button.accessibilityLabel ?: @"") lowercaseString] stringByAppendingString:(button.currentTitle ?: @"")];
-            if (WTInputBool(@"wt.input.sms.hideEmoji", NO) && ([accessibility containsString:@"表情"] || [accessibility containsString:@"emoji"])) button.hidden = YES;
+            button.hidden = WTInputBool(@"wt.input.sms.hideEmoji", NO) && ([accessibility containsString:@"表情"] || [accessibility containsString:@"emoji"]);
             button.tintColor = [UIColor colorWithWhite:0.12 alpha:1];
             button.layer.cornerCurve = kCACornerCurveContinuous;
             button.layer.cornerRadius = smsMode ? 16 : (style == 2 ? 18 : 22);
