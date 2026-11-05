@@ -246,7 +246,9 @@ static NSString * const kGlowColor = @"wt.input.glow.color";
     [self presentViewController:a animated:YES completion:nil];
 }
 - (void)showEffect {
-    UIAlertController *a=[UIAlertController alertControllerWithTitle:@"效果已应用" message:@"设置已保存。返回微信聊天页面即可查看当前已接入的磨砂、圆角和按钮外观。" preferredStyle:UIAlertControllerStyleAlert];
-    [a addAction:[UIAlertAction actionWithTitle:@"好的" style:UIAlertActionStyleDefault handler:nil]]; [self presentViewController:a animated:YES completion:nil];
+    // Bring the interactive style preview into view instead of showing a confirmation-only alert.
+    [self.scroll setContentOffset:CGPointMake(0, 210) animated:YES];
+    self.previewPill.layer.borderWidth = 1.8;
+    [UIView animateWithDuration:0.35 animations:^{ self.previewPill.layer.borderWidth = 0.8; }];
 }
 @end
