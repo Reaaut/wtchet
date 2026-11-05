@@ -9,6 +9,8 @@ static char WTOriginalHostTransformKey;
 static char WTOriginalButtonHiddenKey;
 static char WTOriginalBackdropBackgroundKey;
 static char WTOriginalIMEBackgroundKey;
+static char WTOriginalButtonStyleKey;
+static char WTOriginalEditorStyleKey;
 static BOOL WTInputBool(NSString *key, BOOL fallback) {
     id value = [NSUserDefaults.standardUserDefaults objectForKey:key];
     return value ? [value boolValue] : fallback;
@@ -84,7 +86,7 @@ static UIView *WTFindComposerBackdrop(UIView *root, UIView *host) {
 static void WTApplyComposerBackdrop(UIView *root, UIView *host) {
     UIView *backdrop=WTFindComposerBackdrop(root,host);
     if (!backdrop) return;
-    BOOL master=WTInputBool(@"wt.input.enabled",YES);
+    BOOL master=WTInputBool(@"wt.global.enabled",YES) && WTInputBool(@"wt.input.enabled",YES);
     BOOL hide=master && WTInputBool(@"wt.input.nativeBackground.hide",YES);
     BOOL blur=master && WTInputBool(@"wt.input.outerBlur.enabled",YES);
     for(UIView *v=host.superview; v; v=v.superview) {
@@ -129,7 +131,7 @@ static void WTApplyInputMethodArea(UIView *root) {
                      [name containsString:@"inputmode"] || [name containsString:@"imeaccessory"] ||
                      [name containsString:@"keyboardaccessory"]);
         if(target && v!=root) {
-            BOOL enabled=WTInputBool(@"wt.input.method.enabled",YES);
+            BOOL enabled=WTInputBool(@"wt.global.enabled",YES) && WTInputBool(@"wt.input.enabled",YES) && WTInputBool(@"wt.input.method.enabled",YES);
             BOOL hideBG=enabled && WTInputBool(@"wt.input.method.hideBackground",YES);
             BOOL blur=enabled && WTInputBool(@"wt.input.method.blur",YES);
             UIVisualEffectView *glass=(UIVisualEffectView *)[v viewWithTag:WTInputMethodGlassTag];
@@ -231,6 +233,62 @@ static void WTUpdateGlowBorder(UIVisualEffectView *glass, CGFloat radius) {
     }
 }
 
+static void WTRestoreComposerChildren(UIView *host) {
+    if (!host) return;
+    NSMutableArray<UIView *> *stack=[NSMutableArray arrayWithObject:host];
+    NSUInteger count=0;
+    while(stack.count && count++<320) {
+        UIView *v=stack.lastObject; [stack removeLastObject];
+        if ([v isKindOfClass:UITextView.class] || [v isKindOfClass:UITextField.class]) {
+            NSDictionary *saved=objc_getAssociatedObject(v,&WTOriginalEditorStyleKey);
+            if(saved) {
+                id bg=saved[@"background"] ?: NSNull.null;
+                id text=saved[@"text"] ?: NSNull.null;
+                id tint=saved[@"tint"] ?: NSNull.null;
+                v.backgroundColor=(bg==NSNull.null)?nil:bg;
+                if([v isKindOfClass:UITextView.class]) ((UITextView *)v).textColor=(text==NSNull.null)?nil:text;
+                else ((UITextField *)v).textColor=(text==NSNull.null)?nil:text;
+                v.tintColor=(tint==NSNull.null)?nil:tint;
+                v.layer.cornerRadius=[saved[@"radius"] doubleValue];
+                objc_setAssociatedObject(v,&WTOriginalEditorStyleKey,nil,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+            }
+        }
+        if([v isKindOfClass:UIButton.class]) {
+            NSDictionary *saved=objc_getAssociatedObject(v,&WTOriginalButtonStyleKey);
+            if(saved) {
+                id bg=saved[@"background"] ?: NSNull.null;
+                id tint=saved[@"tint"] ?: NSNull.null;
+                id border=saved[@"border"] ?: NSNull.null;
+                v.backgroundColor=(bg==NSNull.null)?nil:bg;
+                ((UIButton *)v).tintColor=(tint==NSNull.null)?nil:tint;
+                v.layer.cornerRadius=[saved[@"radius"] doubleValue];
+                v.layer.borderWidth=[saved[@"borderWidth"] doubleValue];
+                v.layer.borderColor=(border==NSNull.null)?nil:[(UIColor *)border CGColor];
+                v.clipsToBounds=[saved[@"clips"] boolValue];
+                v.hidden=[saved[@"hidden"] boolValue];
+                objc_setAssociatedObject(v,&WTOriginalButtonStyleKey,nil,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+            }
+        }
+        for(UIView *child in v.subviews) [stack addObject:child];
+    }
+}
+static void WTRestoreComposerAncestors(UIView *root, UIView *host) {
+    for(UIView *v=host.superview;v;v=v.superview) {
+        id original=objc_getAssociatedObject(v,&WTOriginalBackdropBackgroundKey);
+        if(original) v.backgroundColor=(original==NSNull.null)?nil:original;
+        [[v viewWithTag:WTComposerBackdropTag] removeFromSuperview];
+        if(v==root) break;
+    }
+    [[host viewWithTag:WTInputGlassTag] removeFromSuperview];
+    id original=objc_getAssociatedObject(host,&WTOriginalHostBackgroundKey);
+    if(original) host.backgroundColor=(original==NSNull.null)?nil:original;
+    NSValue *transform=objc_getAssociatedObject(host,&WTOriginalHostTransformKey);
+    if(transform) host.transform=transform.CGAffineTransformValue;
+    host.layer.cornerRadius=0;
+    host.layer.borderWidth=0;
+    host.clipsToBounds=NO;
+    WTRestoreComposerChildren(host);
+}
 static void WTApplyChatInputGlass(UIView *root) {
     if (!NSThread.isMainThread || !root) return;
     UIView *host = WTFindComposerContainer(root);
@@ -246,13 +304,9 @@ static void WTApplyChatInputGlass(UIView *root) {
     NSInteger smsSize = [NSUserDefaults.standardUserDefaults integerForKey:@"wt.input.sms.size"];
     CGFloat radius = smsMode ? (smsSize == 1 ? 13.0 : 20.0) : (style == 2 ? 17.0 : (style == 1 ? 29.0 : 23.0));
     if (!enabled) {
-        WTApplyComposerBackdrop(root,host);
+        WTRestoreComposerAncestors(root,host);
+        WTRestoreComposerChildren(host);
         WTApplyInputMethodArea(root);
-        [[host viewWithTag:WTInputGlassTag] removeFromSuperview];
-        id originalBackground = objc_getAssociatedObject(host, &WTOriginalHostBackgroundKey);
-        host.backgroundColor = (originalBackground == NSNull.null) ? nil : originalBackground;
-        NSValue *originalTransform = objc_getAssociatedObject(host, &WTOriginalHostTransformKey);
-        if (originalTransform) host.transform = originalTransform.CGAffineTransformValue;
         return;
     }
     WTApplyComposerBackdrop(root,host);
@@ -293,6 +347,15 @@ static void WTApplyChatInputGlass(UIView *root) {
     NSUInteger scanned = 0;
     while (nodes.count && scanned++ < 240) {
         UIView *v = nodes.lastObject; [nodes removeLastObject];
+        if ([v isKindOfClass:UITextView.class] || [v isKindOfClass:UITextField.class]) {
+            if(!objc_getAssociatedObject(v,&WTOriginalEditorStyleKey)) {
+                UIColor *bg=v.backgroundColor, *textColor=nil, *tint=v.tintColor;
+                CGFloat oldRadius=v.layer.cornerRadius;
+                if([v isKindOfClass:UITextView.class]) textColor=((UITextView *)v).textColor;
+                else textColor=((UITextField *)v).textColor;
+                objc_setAssociatedObject(v,&WTOriginalEditorStyleKey,@{@"background":bg ?: NSNull.null,@"text":textColor ?: NSNull.null,@"tint":tint ?: NSNull.null,@"radius":@(oldRadius)},OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+            }
+        }
         if ([v isKindOfClass:UITextView.class]) {
             editor = (UITextView *)v;
             editor.backgroundColor = UIColor.clearColor;
@@ -307,6 +370,10 @@ static void WTApplyChatInputGlass(UIView *root) {
         }
         if ([v isKindOfClass:UIButton.class]) {
             UIButton *button = (UIButton *)v;
+            if(!objc_getAssociatedObject(button,&WTOriginalButtonStyleKey)) {
+                UIColor *borderColor=button.layer.borderColor?[UIColor colorWithCGColor:button.layer.borderColor]:nil;
+                objc_setAssociatedObject(button,&WTOriginalButtonStyleKey,@{@"background":button.backgroundColor ?: NSNull.null,@"tint":button.tintColor ?: NSNull.null,@"border":borderColor ?: NSNull.null,@"radius":@(button.layer.cornerRadius),@"borderWidth":@(button.layer.borderWidth),@"clips":@(button.clipsToBounds),@"hidden":@(button.hidden)},OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+            }
             NSString *accessibility = [[(button.accessibilityLabel ?: @"") lowercaseString] stringByAppendingString:(button.currentTitle ?: @"")];
             BOOL isEmoji = [accessibility containsString:@"表情"] || [accessibility containsString:@"emoji"] ||
                            (CGRectGetMidX(button.frame) > CGRectGetWidth(host.bounds) * 0.66 && CGRectGetMidX(button.frame) < CGRectGetWidth(host.bounds) * 0.90);
