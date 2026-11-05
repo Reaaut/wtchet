@@ -125,13 +125,19 @@ static void WTApplyInputMethodArea(UIView *root) {
                      [name containsString:@"keyboardaccessory"]);
         if(target && v!=root) {
             BOOL enabled=WTInputBool(@"wt.input.method.enabled",YES);
+            BOOL hideBG=enabled && WTInputBool(@"wt.input.method.hideBackground",YES);
+            BOOL blur=enabled && WTInputBool(@"wt.input.method.blur",YES);
             UIVisualEffectView *glass=(UIVisualEffectView *)[v viewWithTag:WTInputMethodGlassTag];
             if(!objc_getAssociatedObject(v,&WTOriginalIMEBackgroundKey)) {
                 id original=v.backgroundColor ?: (id)NSNull.null;
                 objc_setAssociatedObject(v,&WTOriginalIMEBackgroundKey,original,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
             }
-            if(enabled && WTInputBool(@"wt.input.method.hideBackground",YES)) v.backgroundColor=UIColor.clearColor;
-            if(enabled && WTInputBool(@"wt.input.method.blur",YES) && !glass) {
+            if(hideBG) v.backgroundColor=UIColor.clearColor;
+            else {
+                id original=objc_getAssociatedObject(v,&WTOriginalIMEBackgroundKey);
+                v.backgroundColor=(original==NSNull.null)?nil:original;
+            }
+            if(blur && !glass) {
                 glass=[[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial]];
                 glass.tag=WTInputMethodGlassTag; glass.userInteractionEnabled=NO; glass.translatesAutoresizingMaskIntoConstraints=NO;
                 [v insertSubview:glass atIndex:0];
@@ -142,9 +148,9 @@ static void WTApplyInputMethodArea(UIView *root) {
                     [glass.bottomAnchor constraintEqualToAnchor:v.bottomAnchor]
                 ]];
             }
-            if(!blurMethod) [glass removeFromSuperview];
+            if(!blur) [glass removeFromSuperview];
             if(glass) {
-                glass.effect=blurMethod?[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial]:nil;
+                glass.effect=blur?[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial]:nil;
                 glass.layer.cornerRadius=WTInputBool(@"wt.input.method.rounded",YES)?16:0;
                 glass.clipsToBounds=YES;
             }
