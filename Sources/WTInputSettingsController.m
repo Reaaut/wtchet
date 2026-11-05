@@ -1,292 +1,252 @@
 #import "WTInputSettingsController.h"
 
-static NSString * const WTInputEnabledKey = @"wt.input.enabled";
-static NSString * const WTInputPlaceholderEnabledKey = @"wt.input.placeholder.enabled";
-static NSString * const WTInputPlaceholderTextKey = @"wt.input.placeholder.text";
-static NSString * const WTInputJellyMenuKey = @"wt.input.jelly.menu";
-static NSString * const WTInputSMSKey = @"wt.input.sms.enabled";
-static NSString * const WTInputSMSSizeKey = @"wt.input.sms.size";
-static NSString * const WTInputSMSEmojiKey = @"wt.input.sms.hideEmoji";
-static NSString * const WTInputSMSIconKey = @"wt.input.sms.icon";
-static NSString * const WTInputStyleKey = @"wt.input.preview.style";
+static NSString * const kEnabled = @"wt.input.enabled";
+static NSString * const kStyle = @"wt.input.preview.style";
+static NSString * const kPlaceholderOn = @"wt.input.placeholder.enabled";
+static NSString * const kPlaceholder = @"wt.input.placeholder.text";
+static NSString * const kJelly = @"wt.input.jelly.menu";
+static NSString * const kSMS = @"wt.input.sms.enabled";
+static NSString * const kSMSSize = @"wt.input.sms.size";
+static NSString * const kHideEmoji = @"wt.input.sms.hideEmoji";
+static NSString * const kSMSIcon = @"wt.input.sms.icon";
+static NSString * const kGlow = @"wt.input.glow.enabled";
+static NSString * const kGlowSpeed = @"wt.input.glow.speed";
+static NSString * const kGlowColor = @"wt.input.glow.color";
 
 @interface WTInputSettingsController ()
 @property(nonatomic,strong) UIScrollView *scroll;
 @property(nonatomic,strong) UIStackView *stack;
-@property(nonatomic,strong) UIVisualEffectView *preview;
-@property(nonatomic,strong) UILabel *previewText;
+@property(nonatomic,strong) UISegmentedControl *style;
 @property(nonatomic,strong) UIView *previewPill;
-@property(nonatomic,strong) UISegmentedControl *styleControl;
+@property(nonatomic,strong) UILabel *previewPlaceholder;
+@property(nonatomic,strong) UIVisualEffectView *previewGlass;
+@property(nonatomic,strong) UISlider *glowSlider;
+@property(nonatomic,strong) UIButton *showButton;
 @end
 
 @implementation WTInputSettingsController
 
+- (UIColor *)green { return [UIColor colorWithRed:0.02 green:0.53 blue:0.30 alpha:1]; }
+- (BOOL)flag:(NSString *)key fallback:(BOOL)value {
+    return [NSUserDefaults.standardUserDefaults objectForKey:key] ? [NSUserDefaults.standardUserDefaults boolForKey:key] : value;
+}
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.title = @"输入框设置/美化";
-    self.view.backgroundColor = [UIColor colorWithRed:0.91 green:0.95 blue:0.93 alpha:1];
+    self.view.backgroundColor = [UIColor colorWithRed:0.88 green:0.94 blue:0.91 alpha:1];
+    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"chevron.left"] style:UIBarButtonItemStylePlain target:self action:@selector(goBack)];
     self.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
     [self buildPage];
 }
+- (void)goBack { [self.navigationController popViewControllerAnimated:YES]; }
 
-- (BOOL)valueForKey:(NSString *)key fallback:(BOOL)fallback {
-    NSUserDefaults *d = NSUserDefaults.standardUserDefaults;
-    return [d objectForKey:key] ? [d boolForKey:key] : fallback;
-}
-- (void)setBool:(BOOL)value key:(NSString *)key {
-    [NSUserDefaults.standardUserDefaults setBool:value forKey:key];
-}
-- (UIColor *)green {
-    return [UIColor colorWithRed:0.04 green:0.43 blue:0.27 alpha:1];
-}
-- (UIVisualEffectView *)glassPanel {
-    UIVisualEffectView *v = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial]];
-    v.layer.cornerRadius = 22;
-    v.layer.cornerCurve = kCACornerCurveContinuous;
-    v.layer.borderWidth = 1;
-    v.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.68].CGColor;
+- (UIVisualEffectView *)panel {
+    UIVisualEffectView *v = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterialLight]];
+    v.translatesAutoresizingMaskIntoConstraints = NO;
+    v.layer.cornerRadius = 24; v.layer.cornerCurve = kCACornerCurveContinuous;
+    v.layer.borderWidth = 1; v.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.72].CGColor;
     v.clipsToBounds = YES;
     return v;
 }
-- (void)buildPage {
-    self.scroll = [UIScrollView new];
-    self.scroll.translatesAutoresizingMaskIntoConstraints = NO;
-    self.scroll.alwaysBounceVertical = YES;
-    [self.view addSubview:self.scroll];
-    self.stack = [UIStackView new];
-    self.stack.translatesAutoresizingMaskIntoConstraints = NO;
-    self.stack.axis = UILayoutConstraintAxisVertical;
-    self.stack.spacing = 16;
-    [self.scroll addSubview:self.stack];
-    [NSLayoutConstraint activateConstraints:@[
-        [self.scroll.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:8],
-        [self.scroll.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16],
-        [self.scroll.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16],
-        [self.scroll.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
-        [self.stack.topAnchor constraintEqualToAnchor:self.scroll.contentLayoutGuide.topAnchor],
-        [self.stack.leadingAnchor constraintEqualToAnchor:self.scroll.contentLayoutGuide.leadingAnchor],
-        [self.stack.trailingAnchor constraintEqualToAnchor:self.scroll.contentLayoutGuide.trailingAnchor],
-        [self.stack.bottomAnchor constraintEqualToAnchor:self.scroll.contentLayoutGuide.bottomAnchor constant:-24],
-        [self.stack.widthAnchor constraintEqualToAnchor:self.scroll.frameLayoutGuide.widthAnchor]
-    ]];
-
-    [self addSectionTitle:@"基础输入框"];
-    UIVisualEffectView *base = [self glassPanel];
-    UIStackView *baseRows = [self rowsStack];
-    [base.contentView addSubview:baseRows];
-    [NSLayoutConstraint activateConstraints:@[
-        [baseRows.topAnchor constraintEqualToAnchor:base.contentView.topAnchor constant:4],
-        [baseRows.leadingAnchor constraintEqualToAnchor:base.contentView.leadingAnchor constant:16],
-        [baseRows.trailingAnchor constraintEqualToAnchor:base.contentView.trailingAnchor constant:-16],
-        [baseRows.bottomAnchor constraintEqualToAnchor:base.contentView.bottomAnchor constant:-4]
-    ]];
-    [baseRows addArrangedSubview:[self switchRow:@"输入框美化总开关" detail:@"开启后应用自定义输入框外观" key:WTInputEnabledKey fallback:YES]];
-    [baseRows addArrangedSubview:[self switchRow:@"输入框占位符" detail:@"显示自定义的发送提示文字" key:WTInputPlaceholderEnabledKey fallback:NO]];
-    [baseRows addArrangedSubview:[self actionRow:@"占位符文字" detail:[NSUserDefaults.standardUserDefaults stringForKey:WTInputPlaceholderTextKey] ?: @"发送消息" action:@selector(editPlaceholder)]];
-    [baseRows addArrangedSubview:[self switchRow:@"输入框加号液态菜单" detail:@"保留微信原生菜单行为，仅预留外观开关" key:WTInputJellyMenuKey fallback:NO]];
-    [self.stack addArrangedSubview:base];
-
-    [self addSectionTitle:@"样式预览"];
-    UIVisualEffectView *previewCard = [self glassPanel];
-    previewCard.translatesAutoresizingMaskIntoConstraints = NO;
-    UIStackView *previewContent = [self rowsStack];
-    [previewCard.contentView addSubview:previewContent];
-    [NSLayoutConstraint activateConstraints:@[
-        [previewContent.topAnchor constraintEqualToAnchor:previewCard.contentView.topAnchor constant:14],
-        [previewContent.leadingAnchor constraintEqualToAnchor:previewCard.contentView.leadingAnchor constant:14],
-        [previewContent.trailingAnchor constraintEqualToAnchor:previewCard.contentView.trailingAnchor constant:-14],
-        [previewContent.bottomAnchor constraintEqualToAnchor:previewCard.contentView.bottomAnchor constant:-14]
-    ]];
-    self.styleControl = [[UISegmentedControl alloc] initWithItems:@[@"简约",@"大胶囊",@"小胶囊"]];
-    NSInteger savedStyle = [NSUserDefaults.standardUserDefaults integerForKey:WTInputStyleKey];
-    self.styleControl.selectedSegmentIndex = MIN(savedStyle, 2);
-    [self.styleControl addTarget:self action:@selector(styleChanged:) forControlEvents:UIControlEventValueChanged];
-    [previewContent addArrangedSubview:self.styleControl];
-    UIView *sample = [self previewComposer];
-    [previewContent addArrangedSubview:sample];
-    UILabel *note = [UILabel new];
-    note.text = @"样式将同步应用到微信聊天输入栏；此版本先实现磨砂背景与圆角";
-    note.font = [UIFont systemFontOfSize:12];
-    note.textColor = UIColor.secondaryLabelColor;
-    note.textAlignment = NSTextAlignmentCenter;
-    note.numberOfLines = 0;
-    [previewContent addArrangedSubview:note];
-    [self.stack addArrangedSubview:previewCard];
-
-    [self addSectionTitle:@"短信输入框"];
-    UIVisualEffectView *sms = [self glassPanel];
-    UIStackView *smsRows = [self rowsStack];
-    [sms.contentView addSubview:smsRows];
-    [NSLayoutConstraint activateConstraints:@[
-        [smsRows.topAnchor constraintEqualToAnchor:sms.contentView.topAnchor constant:4],
-        [smsRows.leadingAnchor constraintEqualToAnchor:sms.contentView.leadingAnchor constant:16],
-        [smsRows.trailingAnchor constraintEqualToAnchor:sms.contentView.trailingAnchor constant:-16],
-        [smsRows.bottomAnchor constraintEqualToAnchor:sms.contentView.bottomAnchor constant:-4]
-    ]];
-    [smsRows addArrangedSubview:[self switchRow:@"短信输入框" detail:@"单独启用短信风格布局（后续接入微信）" key:WTInputSMSKey fallback:NO]];
-    [smsRows addArrangedSubview:[self optionRow:@"短信输入框大小" items:@[@"大",@"小"] key:WTInputSMSSizeKey]];
-    [smsRows addArrangedSubview:[self switchRow:@"隐藏短信风格表情图标" detail:@"不影响点击区域的预留" key:WTInputSMSEmojiKey fallback:NO]];
-    [smsRows addArrangedSubview:[self optionRow:@"短信风格图标" items:@[@"关",@"粗",@"细"] key:WTInputSMSIconKey]];
-    [self.stack addArrangedSubview:sms];
-
-    [self addSectionTitle:@"说明"];
-    UILabel *foot = [UILabel new];
-    foot.text = @"当前版本已加入聊天页输入栏的保守识别与磨砂背景层。短信风格、占位符替换、加号菜单和工具栏细节仍为后续开发项。";
-    foot.font = [UIFont systemFontOfSize:12];
-    foot.textColor = UIColor.secondaryLabelColor;
-    foot.numberOfLines = 0;
-    foot.textAlignment = NSTextAlignmentCenter;
-    [self.stack addArrangedSubview:foot];
-}
-
-- (UIStackView *)rowsStack {
-    UIStackView *s = [UIStackView new];
-    s.translatesAutoresizingMaskIntoConstraints = NO;
-    s.axis = UILayoutConstraintAxisVertical;
-    s.spacing = 0;
+- (UIStackView *)verticalStack {
+    UIStackView *s = [UIStackView new]; s.translatesAutoresizingMaskIntoConstraints = NO;
+    s.axis = UILayoutConstraintAxisVertical; s.spacing = 0;
     return s;
 }
-- (void)addSectionTitle:(NSString *)title {
-    UILabel *l = [UILabel new];
-    l.text = title;
-    l.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
+- (void)addHeading:(NSString *)text {
+    UILabel *l = [UILabel new]; l.translatesAutoresizingMaskIntoConstraints = NO;
+    l.text = text; l.font = [UIFont systemFontOfSize:14 weight:UIFontWeightSemibold];
     l.textColor = [UIColor secondaryLabelColor];
-    l.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.stack addArrangedSubview:l];
-    [l.heightAnchor constraintEqualToConstant:22].active = YES;
+    [self.stack addArrangedSubview:l]; [l.heightAnchor constraintEqualToConstant:30].active = YES;
+}
+- (void)addPanel:(UIVisualEffectView *)panel content:(UIView *)content inset:(CGFloat)inset {
+    [panel.contentView addSubview:content];
+    [NSLayoutConstraint activateConstraints:@[
+        [content.topAnchor constraintEqualToAnchor:panel.contentView.topAnchor constant:inset],
+        [content.leadingAnchor constraintEqualToAnchor:panel.contentView.leadingAnchor constant:16],
+        [content.trailingAnchor constraintEqualToAnchor:panel.contentView.trailingAnchor constant:-16],
+        [content.bottomAnchor constraintEqualToAnchor:panel.contentView.bottomAnchor constant:-inset]
+    ]];
+    [self.stack addArrangedSubview:panel];
 }
 - (UIView *)switchRow:(NSString *)title detail:(NSString *)detail key:(NSString *)key fallback:(BOOL)fallback {
-    UIView *row = [UIView new];
-    row.translatesAutoresizingMaskIntoConstraints = NO;
-    UILabel *t = [UILabel new]; t.translatesAutoresizingMaskIntoConstraints = NO;
-    t.text = title; t.font = [UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
-    UILabel *sub = [UILabel new]; sub.translatesAutoresizingMaskIntoConstraints = NO;
-    sub.text = detail; sub.font = [UIFont systemFontOfSize:12]; sub.textColor = UIColor.secondaryLabelColor;
-    UISwitch *sw = [UISwitch new]; sw.translatesAutoresizingMaskIntoConstraints = NO;
-    sw.onTintColor = self.green; sw.on = [self valueForKey:key fallback:fallback];
-    sw.accessibilityIdentifier = key;
+    UIView *row=[UIView new]; row.translatesAutoresizingMaskIntoConstraints=NO;
+    UILabel *t=[UILabel new]; t.translatesAutoresizingMaskIntoConstraints=NO; t.text=title; t.font=[UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
+    UILabel *d=[UILabel new]; d.translatesAutoresizingMaskIntoConstraints=NO; d.text=detail; d.font=[UIFont systemFontOfSize:12]; d.textColor=UIColor.secondaryLabelColor;
+    UISwitch *sw=[UISwitch new]; sw.translatesAutoresizingMaskIntoConstraints=NO; sw.onTintColor=self.green; sw.on=[self flag:key fallback:fallback]; sw.accessibilityIdentifier=key;
     [sw addTarget:self action:@selector(switchChanged:) forControlEvents:UIControlEventValueChanged];
-    [row addSubview:t]; [row addSubview:sub]; [row addSubview:sw];
+    [row addSubview:t]; [row addSubview:d]; [row addSubview:sw];
     [NSLayoutConstraint activateConstraints:@[
         [row.heightAnchor constraintEqualToConstant:66],
-        [t.leadingAnchor constraintEqualToAnchor:row.leadingAnchor],
-        [t.topAnchor constraintEqualToAnchor:row.topAnchor constant:12],
-        [t.trailingAnchor constraintLessThanOrEqualToAnchor:sw.leadingAnchor constant:-8],
-        [sub.leadingAnchor constraintEqualToAnchor:t.leadingAnchor],
-        [sub.topAnchor constraintEqualToAnchor:t.bottomAnchor constant:3],
-        [sub.trailingAnchor constraintLessThanOrEqualToAnchor:sw.leadingAnchor constant:-8],
-        [sw.trailingAnchor constraintEqualToAnchor:row.trailingAnchor],
-        [sw.centerYAnchor constraintEqualToAnchor:row.centerYAnchor]
+        [t.leadingAnchor constraintEqualToAnchor:row.leadingAnchor], [t.topAnchor constraintEqualToAnchor:row.topAnchor constant:10],
+        [t.trailingAnchor constraintLessThanOrEqualToAnchor:sw.leadingAnchor constant:-10],
+        [d.leadingAnchor constraintEqualToAnchor:t.leadingAnchor], [d.topAnchor constraintEqualToAnchor:t.bottomAnchor constant:3],
+        [d.trailingAnchor constraintLessThanOrEqualToAnchor:sw.leadingAnchor constant:-10],
+        [sw.trailingAnchor constraintEqualToAnchor:row.trailingAnchor], [sw.centerYAnchor constraintEqualToAnchor:row.centerYAnchor]
     ]];
     return row;
 }
-- (UIView *)actionRow:(NSString *)title detail:(NSString *)detail action:(SEL)action {
-    UIButton *b = [UIButton buttonWithType:UIButtonTypeSystem];
-    b.translatesAutoresizingMaskIntoConstraints = NO;
+- (UIView *)disclosureRow:(NSString *)title detail:(NSString *)detail action:(SEL)action {
+    UIButton *b=[UIButton buttonWithType:UIButtonTypeSystem]; b.translatesAutoresizingMaskIntoConstraints=NO;
     [b addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
-    UILabel *t = [UILabel new]; t.text = title; t.font = [UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
-    UILabel *d = [UILabel new]; d.text = detail; d.font = [UIFont systemFontOfSize:12]; d.textColor = UIColor.secondaryLabelColor;
-    UIStackView *v = [[UIStackView alloc] initWithArrangedSubviews:@[t,d]];
-    v.translatesAutoresizingMaskIntoConstraints = NO; v.axis = UILayoutConstraintAxisVertical; v.spacing = 4;
-    UIImageView *chev = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"chevron.right"]];
-    chev.translatesAutoresizingMaskIntoConstraints = NO; chev.tintColor = UIColor.tertiaryLabelColor;
+    UILabel *t=[UILabel new]; t.text=title; t.font=[UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
+    UILabel *d=[UILabel new]; d.text=detail; d.font=[UIFont systemFontOfSize:12]; d.textColor=UIColor.secondaryLabelColor;
+    UIStackView *v=[[UIStackView alloc] initWithArrangedSubviews:@[t,d]]; v.translatesAutoresizingMaskIntoConstraints=NO; v.axis=UILayoutConstraintAxisVertical; v.spacing=3;
+    UIImageView *chev=[[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"chevron.down"]]; chev.translatesAutoresizingMaskIntoConstraints=NO; chev.tintColor=UIColor.tertiaryLabelColor;
     [b addSubview:v]; [b addSubview:chev];
     [NSLayoutConstraint activateConstraints:@[
-        [b.heightAnchor constraintEqualToConstant:62],
-        [v.leadingAnchor constraintEqualToAnchor:b.leadingAnchor],
-        [v.centerYAnchor constraintEqualToAnchor:b.centerYAnchor],
-        [v.trailingAnchor constraintLessThanOrEqualToAnchor:chev.leadingAnchor constant:-8],
-        [chev.trailingAnchor constraintEqualToAnchor:b.trailingAnchor],
-        [chev.centerYAnchor constraintEqualToAnchor:b.centerYAnchor],
-        [chev.widthAnchor constraintEqualToConstant:10]
+        [b.heightAnchor constraintEqualToConstant:64], [v.leadingAnchor constraintEqualToAnchor:b.leadingAnchor],
+        [v.centerYAnchor constraintEqualToAnchor:b.centerYAnchor], [v.trailingAnchor constraintLessThanOrEqualToAnchor:chev.leadingAnchor constant:-8],
+        [chev.trailingAnchor constraintEqualToAnchor:b.trailingAnchor], [chev.centerYAnchor constraintEqualToAnchor:b.centerYAnchor],
+        [chev.widthAnchor constraintEqualToConstant:14], [chev.heightAnchor constraintEqualToConstant:14]
     ]];
     return b;
 }
-- (UIView *)optionRow:(NSString *)title items:(NSArray<NSString *> *)items key:(NSString *)key {
-    UIView *row = [UIView new]; row.translatesAutoresizingMaskIntoConstraints = NO;
-    UILabel *l = [UILabel new]; l.translatesAutoresizingMaskIntoConstraints = NO;
-    l.text = title; l.font = [UIFont systemFontOfSize:15 weight:UIFontWeightMedium];
-    UISegmentedControl *seg = [[UISegmentedControl alloc] initWithItems:items];
-    seg.translatesAutoresizingMaskIntoConstraints = NO;
-    NSInteger saved = [NSUserDefaults.standardUserDefaults integerForKey:key];
-    seg.selectedSegmentIndex = MIN(saved, items.count - 1);
-    seg.accessibilityIdentifier = key;
-    [seg addTarget:self action:@selector(optionChanged:) forControlEvents:UIControlEventValueChanged];
-    [row addSubview:l]; [row addSubview:seg];
+- (void)buildPage {
+    self.scroll=[UIScrollView new]; self.scroll.translatesAutoresizingMaskIntoConstraints=NO; self.scroll.alwaysBounceVertical=YES;
+    [self.view addSubview:self.scroll];
+    self.stack=[self verticalStack]; [self.scroll addSubview:self.stack];
     [NSLayoutConstraint activateConstraints:@[
-        [row.heightAnchor constraintEqualToConstant:58],
-        [l.leadingAnchor constraintEqualToAnchor:row.leadingAnchor],
-        [l.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
-        [seg.trailingAnchor constraintEqualToAnchor:row.trailingAnchor],
-        [seg.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
-        [seg.widthAnchor constraintEqualToConstant:150],
-        [l.trailingAnchor constraintLessThanOrEqualToAnchor:seg.leadingAnchor constant:-8]
+        [self.scroll.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:4],
+        [self.scroll.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:18],
+        [self.scroll.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-18],
+        [self.scroll.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-88],
+        [self.stack.topAnchor constraintEqualToAnchor:self.scroll.contentLayoutGuide.topAnchor],
+        [self.stack.leadingAnchor constraintEqualToAnchor:self.scroll.contentLayoutGuide.leadingAnchor],
+        [self.stack.trailingAnchor constraintEqualToAnchor:self.scroll.contentLayoutGuide.trailingAnchor],
+        [self.stack.bottomAnchor constraintEqualToAnchor:self.scroll.contentLayoutGuide.bottomAnchor constant:-22],
+        [self.stack.widthAnchor constraintEqualToAnchor:self.scroll.frameLayoutGuide.widthAnchor]
     ]];
-    return row;
+
+    [self addHeading:@"输入框"];
+    UIVisualEffectView *base=[self panel]; UIStackView *baseRows=[self verticalStack];
+    [baseRows addArrangedSubview:[self switchRow:@"输入框胶囊" detail:@"输入框样式总开关" key:kEnabled fallback:YES]];
+    UIView *line=[UIView new]; line.backgroundColor=[UIColor colorWithWhite:1 alpha:0.75]; [line.heightAnchor constraintEqualToConstant:1].active=YES; [baseRows addArrangedSubview:line];
+    [baseRows addArrangedSubview:[self disclosureRow:@"展开" detail:@"输入框样式、布局选项" action:@selector(scrollToStyle)]];
+    [self addPanel:base content:baseRows inset:0];
+
+    [self addHeading:@"样式预览"];
+    UIVisualEffectView *sampleCard=[self panel]; UIStackView *sampleRows=[self verticalStack];
+    self.style=[[UISegmentedControl alloc] initWithItems:@[@"简约",@"大胶囊",@"小胶囊"]];
+    NSInteger saved=[NSUserDefaults.standardUserDefaults integerForKey:kStyle]; self.style.selectedSegmentIndex=MIN(saved,2);
+    [self.style addTarget:self action:@selector(styleChanged:) forControlEvents:UIControlEventValueChanged];
+    [sampleRows addArrangedSubview:self.style]; [self.style.heightAnchor constraintEqualToConstant:34].active=YES;
+    [sampleRows addArrangedSubview:[self composerPreview]];
+    UILabel *hint=[UILabel new]; hint.text=@"预览与微信聊天输入栏同步使用当前样式"; hint.textColor=UIColor.secondaryLabelColor; hint.font=[UIFont systemFontOfSize:11]; hint.textAlignment=NSTextAlignmentCenter;
+    [sampleRows addArrangedSubview:hint]; [hint.heightAnchor constraintEqualToConstant:22].active=YES;
+    [self addPanel:sampleCard content:sampleRows inset:14];
+
+    [self addHeading:@"TG 菜单"];
+    UIVisualEffectView *tg=[self panel]; UIStackView *tgRows=[self verticalStack];
+    [tgRows addArrangedSubview:[self switchRow:@"TG 菜单" detail:@"启用胶囊式附加菜单外观" key:kJelly fallback:NO]];
+    [tgRows addArrangedSubview:[self disclosureRow:@"展开" detail:@"菜单图标与布局选项" action:@selector(showTGInfo)]];
+    [self addPanel:tg content:tgRows inset:0];
+
+    [self addHeading:@"输入框炫光"];
+    UIVisualEffectView *glow=[self panel]; UIStackView *glowRows=[self verticalStack];
+    [glowRows addArrangedSubview:[self switchRow:@"输入框炫光" detail:@"沿输入框边缘显示柔和流光" key:kGlow fallback:NO]];
+    [glowRows addArrangedSubview:[self sliderRow:@"炫光速度" detail:@"慢速 1.0 倍 · 快速 2.5 倍" key:kGlowSpeed min:0.5 max:2.5 fallback:1.0]];
+    [glowRows addArrangedSubview:[self disclosureRow:@"炫光颜色" detail:@"选择绿色、蓝色、紫色或系统色" action:@selector(chooseGlowColor)]];
+    [self addPanel:glow content:glowRows inset:0];
+
+    [self addHeading:@"短信输入框"];
+    UIVisualEffectView *sms=[self panel]; UIStackView *smsRows=[self verticalStack];
+    [smsRows addArrangedSubview:[self switchRow:@"短信输入框" detail:@"使用更紧凑的短信式输入布局" key:kSMS fallback:NO]];
+    [smsRows addArrangedSubview:[self optionRow:@"输入框大小" items:@[@"大",@"小"] key:kSMSSize]];
+    [smsRows addArrangedSubview:[self switchRow:@"隐藏表情图标" detail:@"隐藏输入栏表情按钮外观" key:kHideEmoji fallback:NO]];
+    [smsRows addArrangedSubview:[self optionRow:@"短信风格图标" items:@[@"默认",@"粗线",@"细线"] key:kSMSIcon]];
+    [self addPanel:sms content:smsRows inset:0];
+
+    [self addHeading:@"占位文字"];
+    UIVisualEffectView *placeholder=[self panel]; UIStackView *phRows=[self verticalStack];
+    [phRows addArrangedSubview:[self switchRow:@"自定义占位符" detail:@"替换输入框内的提示文字" key:kPlaceholderOn fallback:NO]];
+    [phRows addArrangedSubview:[self disclosureRow:@"占位符内容" detail:[NSUserDefaults.standardUserDefaults stringForKey:kPlaceholder] ?: @"发送消息" action:@selector(editPlaceholder)]];
+    [self addPanel:placeholder content:phRows inset:0];
+
+    self.showButton=[UIButton buttonWithType:UIButtonTypeSystem]; self.showButton.translatesAutoresizingMaskIntoConstraints=NO;
+    [self.showButton setTitle:@"◉  展示效果" forState:UIControlStateNormal]; self.showButton.titleLabel.font=[UIFont systemFontOfSize:17 weight:UIFontWeightSemibold];
+    [self.showButton setTitleColor:[UIColor colorWithRed:0 green:0.48 blue:0.98 alpha:1] forState:UIControlStateNormal];
+    self.showButton.backgroundColor=[UIColor colorWithWhite:1 alpha:0.72]; self.showButton.layer.cornerRadius=28; self.showButton.layer.borderWidth=1; self.showButton.layer.borderColor=[UIColor colorWithWhite:1 alpha:0.85].CGColor;
+    [self.showButton addTarget:self action:@selector(showEffect) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:self.showButton];
+    [NSLayoutConstraint activateConstraints:@[
+        [self.showButton.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:28],
+        [self.showButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-28],
+        [self.showButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-8],
+        [self.showButton.heightAnchor constraintEqualToConstant:54]
+    ]];
 }
-- (UIView *)previewComposer {
-    UIView *wrap = [UIView new]; wrap.translatesAutoresizingMaskIntoConstraints = NO;
-    [wrap.heightAnchor constraintEqualToConstant:72].active = YES;
-    UIView *pill = [UIView new]; pill.translatesAutoresizingMaskIntoConstraints = NO;
-    pill.backgroundColor = [UIColor colorWithWhite:1 alpha:0.30];
-    pill.layer.cornerCurve = kCACornerCurveContinuous;
-    pill.layer.borderWidth = 1;
-    pill.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.8].CGColor;
-    pill.layer.shadowColor = UIColor.blackColor.CGColor;
-    pill.layer.shadowOpacity = 0.06; pill.layer.shadowRadius = 8;
-    [wrap addSubview:pill];
-    UILabel *voice = [UILabel new]; voice.translatesAutoresizingMaskIntoConstraints = NO;
-    voice.text = @"◖))"; voice.font = [UIFont systemFontOfSize:19 weight:UIFontWeightSemibold];
-    UILabel *placeholder = [UILabel new]; placeholder.translatesAutoresizingMaskIntoConstraints = NO;
-    placeholder.text = @"发送消息"; placeholder.textColor = UIColor.secondaryLabelColor;
-    placeholder.font = [UIFont systemFontOfSize:15];
-    UILabel *tools = [UILabel new]; tools.translatesAutoresizingMaskIntoConstraints = NO;
-    tools.text = @"☻  ⊕"; tools.font = [UIFont systemFontOfSize:20];
-    [pill addSubview:voice]; [pill addSubview:placeholder]; [pill addSubview:tools];
-    [NSLayoutConstraint activateConstraints:@[
-        [pill.leadingAnchor constraintEqualToAnchor:wrap.leadingAnchor constant:5],
-        [pill.trailingAnchor constraintEqualToAnchor:wrap.trailingAnchor constant:-5],
-        [pill.centerYAnchor constraintEqualToAnchor:wrap.centerYAnchor],
-        [pill.heightAnchor constraintEqualToConstant:48],
-        [voice.leadingAnchor constraintEqualToAnchor:pill.leadingAnchor constant:14],
-        [voice.centerYAnchor constraintEqualToAnchor:pill.centerYAnchor],
-        [placeholder.leadingAnchor constraintEqualToAnchor:voice.trailingAnchor constant:13],
-        [placeholder.centerYAnchor constraintEqualToAnchor:pill.centerYAnchor],
-        [tools.trailingAnchor constraintEqualToAnchor:pill.trailingAnchor constant:-13],
-        [tools.centerYAnchor constraintEqualToAnchor:pill.centerYAnchor],
-        [placeholder.trailingAnchor constraintLessThanOrEqualToAnchor:tools.leadingAnchor constant:-8]
-    ]];
-    self.previewPill = pill; self.previewText = placeholder;
-    [self applyPreviewStyle:self.styleControl.selectedSegmentIndex];
+- (UIView *)composerPreview {
+    UIView *wrap=[UIView new]; wrap.translatesAutoresizingMaskIntoConstraints=NO; [wrap.heightAnchor constraintEqualToConstant:88].active=YES;
+    UIVisualEffectView *glass=[[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterialLight]];
+    glass.translatesAutoresizingMaskIntoConstraints=NO; glass.layer.cornerRadius=26; glass.clipsToBounds=YES; glass.layer.borderWidth=1; glass.layer.borderColor=[UIColor colorWithWhite:1 alpha:0.8].CGColor;
+    [wrap addSubview:glass];
+    [NSLayoutConstraint activateConstraints:@[[glass.leadingAnchor constraintEqualToAnchor:wrap.leadingAnchor constant:4],[glass.trailingAnchor constraintEqualToAnchor:wrap.trailingAnchor constant:-4],[glass.centerYAnchor constraintEqualToAnchor:wrap.centerYAnchor],[glass.heightAnchor constraintEqualToConstant:58]]];
+    UIStackView *items=[UIStackView new]; items.translatesAutoresizingMaskIntoConstraints=NO; items.axis=UILayoutConstraintAxisHorizontal; items.alignment=UIStackViewAlignmentCenter; items.spacing=12;
+    UIImageView *voice=[[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"waveform"]]; voice.tintColor=UIColor.labelColor; voice.contentMode=UIViewContentModeScaleAspectFit;
+    self.previewPlaceholder=[UILabel new]; self.previewPlaceholder.text=[NSUserDefaults.standardUserDefaults stringForKey:kPlaceholder] ?: @"发送消息"; self.previewPlaceholder.textColor=UIColor.secondaryLabelColor; self.previewPlaceholder.font=[UIFont systemFontOfSize:16];
+    UIView *space=[UIView new]; [space setContentHuggingPriority:1 forAxis:UILayoutConstraintAxisHorizontal];
+    UIImageView *emoji=[[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"face.smiling"]]; emoji.tintColor=UIColor.labelColor;
+    UIImageView *plus=[[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"plus.circle"]]; plus.tintColor=UIColor.labelColor;
+    for (UIView *v in @[voice,self.previewPlaceholder,space,emoji,plus]) [items addArrangedSubview:v];
+    for (UIView *v in @[voice,emoji,plus]) { [v.widthAnchor constraintEqualToConstant:24].active=YES; [v.heightAnchor constraintEqualToConstant:24].active=YES; }
+    [glass.contentView addSubview:items];
+    [NSLayoutConstraint activateConstraints:@[[items.leadingAnchor constraintEqualToAnchor:glass.contentView.leadingAnchor constant:16],[items.trailingAnchor constraintEqualToAnchor:glass.contentView.trailingAnchor constant:-16],[items.centerYAnchor constraintEqualToAnchor:glass.contentView.centerYAnchor]]];
+    self.previewPill=glass;
+    [self applyPreview];
     return wrap;
 }
-- (void)applyPreviewStyle:(NSInteger)style {
-    self.previewPill.layer.cornerRadius = style == 2 ? 18 : 25;
-    self.previewPill.transform = style == 1 ? CGAffineTransformMakeScale(1.0,1.12) : CGAffineTransformIdentity;
-    self.previewText.text = [NSUserDefaults.standardUserDefaults stringForKey:WTInputPlaceholderTextKey] ?: @"发送消息";
+- (UIView *)sliderRow:(NSString *)title detail:(NSString *)detail key:(NSString *)key min:(float)min max:(float)max fallback:(float)value {
+    UIView *row=[UIView new]; row.translatesAutoresizingMaskIntoConstraints=NO; [row.heightAnchor constraintEqualToConstant:76].active=YES;
+    UILabel *t=[UILabel new]; t.translatesAutoresizingMaskIntoConstraints=NO; t.text=title; t.font=[UIFont systemFontOfSize:15 weight:UIFontWeightMedium];
+    UILabel *d=[UILabel new]; d.translatesAutoresizingMaskIntoConstraints=NO; d.text=detail; d.font=[UIFont systemFontOfSize:11]; d.textColor=UIColor.secondaryLabelColor;
+    UISlider *slider=[UISlider new]; slider.translatesAutoresizingMaskIntoConstraints=NO; slider.minimumValue=min; slider.maximumValue=max; slider.value=[NSUserDefaults.standardUserDefaults objectForKey:key] ? [NSUserDefaults.standardUserDefaults floatForKey:key] : value; slider.accessibilityIdentifier=key; slider.minimumTrackTintColor=self.green;
+    [slider addTarget:self action:@selector(sliderChanged:) forControlEvents:UIControlEventValueChanged];
+    [row addSubview:t]; [row addSubview:d]; [row addSubview:slider];
+    [NSLayoutConstraint activateConstraints:@[[t.leadingAnchor constraintEqualToAnchor:row.leadingAnchor],[t.topAnchor constraintEqualToAnchor:row.topAnchor constant:8],[d.leadingAnchor constraintEqualToAnchor:t.leadingAnchor],[d.topAnchor constraintEqualToAnchor:t.bottomAnchor constant:2],[slider.leadingAnchor constraintEqualToAnchor:row.leadingAnchor constant:120],[slider.trailingAnchor constraintEqualToAnchor:row.trailingAnchor],[slider.centerYAnchor constraintEqualToAnchor:row.centerYAnchor]]];
+    return row;
 }
-- (void)switchChanged:(UISwitch *)sender {
-    [self setBool:sender.isOn key:sender.accessibilityIdentifier];
+- (UIView *)optionRow:(NSString *)title items:(NSArray *)items key:(NSString *)key {
+    UIView *row=[UIView new]; row.translatesAutoresizingMaskIntoConstraints=NO; [row.heightAnchor constraintEqualToConstant:60].active=YES;
+    UILabel *l=[UILabel new]; l.translatesAutoresizingMaskIntoConstraints=NO; l.text=title; l.font=[UIFont systemFontOfSize:15 weight:UIFontWeightMedium];
+    UISegmentedControl *seg=[[UISegmentedControl alloc] initWithItems:items]; seg.translatesAutoresizingMaskIntoConstraints=NO; seg.selectedSegmentIndex=MIN([NSUserDefaults.standardUserDefaults integerForKey:key],items.count-1); seg.accessibilityIdentifier=key; [seg addTarget:self action:@selector(segmentChanged:) forControlEvents:UIControlEventValueChanged];
+    [row addSubview:l]; [row addSubview:seg];
+    [NSLayoutConstraint activateConstraints:@[[l.leadingAnchor constraintEqualToAnchor:row.leadingAnchor],[l.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],[seg.trailingAnchor constraintEqualToAnchor:row.trailingAnchor],[seg.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],[seg.widthAnchor constraintEqualToConstant:150],[l.trailingAnchor constraintLessThanOrEqualToAnchor:seg.leadingAnchor constant:-8]]];
+    return row;
 }
-- (void)optionChanged:(UISegmentedControl *)sender {
-    [NSUserDefaults.standardUserDefaults setInteger:sender.selectedSegmentIndex forKey:sender.accessibilityIdentifier];
+- (void)switchChanged:(UISwitch *)s { [NSUserDefaults.standardUserDefaults setBool:s.isOn forKey:s.accessibilityIdentifier]; }
+- (void)segmentChanged:(UISegmentedControl *)s { [NSUserDefaults.standardUserDefaults setInteger:s.selectedSegmentIndex forKey:s.accessibilityIdentifier]; }
+- (void)sliderChanged:(UISlider *)s { [NSUserDefaults.standardUserDefaults setFloat:s.value forKey:s.accessibilityIdentifier]; }
+- (void)styleChanged:(UISegmentedControl *)s { [NSUserDefaults.standardUserDefaults setInteger:s.selectedSegmentIndex forKey:kStyle]; [self applyPreview]; }
+- (void)applyPreview {
+    NSInteger style=[NSUserDefaults.standardUserDefaults integerForKey:kStyle];
+    CGFloat radius=style==1?29:(style==2?18:24);
+    self.previewPill.layer.cornerRadius=radius;
+    self.previewPlaceholder.text=[NSUserDefaults.standardUserDefaults stringForKey:kPlaceholder] ?: @"发送消息";
 }
-- (void)styleChanged:(UISegmentedControl *)sender {
-    [NSUserDefaults.standardUserDefaults setInteger:sender.selectedSegmentIndex forKey:WTInputStyleKey];
-    [self applyPreviewStyle:sender.selectedSegmentIndex];
+- (void)scrollToStyle { [self.scroll setContentOffset:CGPointMake(0,MIN(self.scroll.contentSize.height,220)) animated:YES]; }
+- (void)showTGInfo {
+    UIAlertController *a=[UIAlertController alertControllerWithTitle:@"TG 菜单" message:@"当前保留原生微信加号菜单的点击与展开逻辑。菜单外观增强将在后续版本接入。" preferredStyle:UIAlertControllerStyleAlert];
+    [a addAction:[UIAlertAction actionWithTitle:@"知道了" style:UIAlertActionStyleDefault handler:nil]]; [self presentViewController:a animated:YES completion:nil];
+}
+- (void)chooseGlowColor {
+    UIAlertController *a=[UIAlertController alertControllerWithTitle:@"炫光颜色" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+    NSArray *names=@[@"系统绿",@"冰蓝",@"紫色",@"白色"];
+    NSArray *values=@[@"green",@"blue",@"purple",@"white"];
+    for (NSUInteger i=0;i<names.count;i++) { NSString *n=names[i], *v=values[i]; [a addAction:[UIAlertAction actionWithTitle:n style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){ [NSUserDefaults.standardUserDefaults setObject:v forKey:kGlowColor]; }]]; }
+    [a addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
+    if (a.popoverPresentationController) a.popoverPresentationController.barButtonItem=self.navigationItem.rightBarButtonItem;
+    [self presentViewController:a animated:YES completion:nil];
 }
 - (void)editPlaceholder {
-    UIAlertController *a = [UIAlertController alertControllerWithTitle:@"占位符文字" message:@"设置聊天输入框的提示文字" preferredStyle:UIAlertControllerStyleAlert];
-    [a addTextFieldWithConfigurationHandler:^(UITextField *f) {
-        f.text = [NSUserDefaults.standardUserDefaults stringForKey:WTInputPlaceholderTextKey] ?: @"发送消息";
-        f.placeholder = @"输入提示文字";
-    }];
+    UIAlertController *a=[UIAlertController alertControllerWithTitle:@"占位符内容" message:@"设置聊天输入框中的提示文字" preferredStyle:UIAlertControllerStyleAlert];
+    [a addTextFieldWithConfigurationHandler:^(UITextField *f){ f.text=[NSUserDefaults.standardUserDefaults stringForKey:kPlaceholder] ?: @"发送消息"; }];
     [a addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
-    [a addAction:[UIAlertAction actionWithTitle:@"保存" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-        NSString *v = a.textFields.firstObject.text ?: @"发送消息";
-        [NSUserDefaults.standardUserDefaults setObject:v forKey:WTInputPlaceholderTextKey];
-        self.previewText.text = v;
-    }]];
+    [a addAction:[UIAlertAction actionWithTitle:@"保存" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){ NSString *v=a.textFields.firstObject.text ?: @"发送消息"; [NSUserDefaults.standardUserDefaults setObject:v forKey:kPlaceholder]; self.previewPlaceholder.text=v; }]];
     [self presentViewController:a animated:YES completion:nil];
+}
+- (void)showEffect {
+    UIAlertController *a=[UIAlertController alertControllerWithTitle:@"效果已应用" message:@"设置已保存。返回微信聊天页面即可查看当前已接入的磨砂、圆角和按钮外观。" preferredStyle:UIAlertControllerStyleAlert];
+    [a addAction:[UIAlertAction actionWithTitle:@"好的" style:UIAlertActionStyleDefault handler:nil]]; [self presentViewController:a animated:YES completion:nil];
 }
 @end
