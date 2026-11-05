@@ -235,7 +235,10 @@ static NSString * const kGlowColor = @"wt.input.glow.color";
     NSArray *values=@[@"green",@"blue",@"purple",@"white"];
     for (NSUInteger i=0;i<names.count;i++) { NSString *n=names[i], *v=values[i]; [a addAction:[UIAlertAction actionWithTitle:n style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){ [NSUserDefaults.standardUserDefaults setObject:v forKey:kGlowColor]; }]]; }
     [a addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
-    if (a.popoverPresentationController) a.popoverPresentationController.barButtonItem=self.navigationItem.rightBarButtonItem;
+    if (a.popoverPresentationController) {
+        a.popoverPresentationController.sourceView = self.view;
+        a.popoverPresentationController.sourceRect = CGRectMake(CGRectGetMidX(self.view.bounds), CGRectGetMidY(self.view.bounds), 1, 1);
+    }
     [self presentViewController:a animated:YES completion:nil];
 }
 - (void)editPlaceholder {
