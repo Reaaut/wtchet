@@ -87,18 +87,23 @@ static void WTApplyComposerBackdrop(UIView *root, UIView *host) {
     BOOL master=WTInputBool(@"wt.input.enabled",YES);
     BOOL hide=master && WTInputBool(@"wt.input.nativeBackground.hide",YES);
     BOOL blur=master && WTInputBool(@"wt.input.outerBlur.enabled",YES);
-    if (!objc_getAssociatedObject(backdrop,&WTOriginalBackdropBackgroundKey)) {
-        id original=backdrop.backgroundColor ?: (id)NSNull.null;
-        objc_setAssociatedObject(backdrop,&WTOriginalBackdropBackgroundKey,original,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    for(UIView *v=host.superview; v; v=v.superview) {
+        if(!objc_getAssociatedObject(v,&WTOriginalBackdropBackgroundKey)) {
+            id original=v.backgroundColor ?: (id)NSNull.null;
+            objc_setAssociatedObject(v,&WTOriginalBackdropBackgroundKey,original,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        }
+        if(hide) v.backgroundColor=UIColor.clearColor;
+        else {
+            id original=objc_getAssociatedObject(v,&WTOriginalBackdropBackgroundKey);
+            v.backgroundColor=(original==NSNull.null)?nil:original;
+        }
+        if(v==backdrop) break;
     }
     UIVisualEffectView *effect=(UIVisualEffectView *)[backdrop viewWithTag:WTComposerBackdropTag];
-    if (!hide && !blur) {
+    if (!blur) {
         [effect removeFromSuperview];
-        id original=objc_getAssociatedObject(backdrop,&WTOriginalBackdropBackgroundKey);
-        backdrop.backgroundColor=(original==NSNull.null)?nil:original;
         return;
     }
-    if (hide) backdrop.backgroundColor=UIColor.clearColor;
     if (!effect) {
         effect=[[UIVisualEffectView alloc] initWithEffect:nil];
         effect.tag=WTComposerBackdropTag; effect.userInteractionEnabled=NO; effect.translatesAutoresizingMaskIntoConstraints=NO;
@@ -110,7 +115,7 @@ static void WTApplyComposerBackdrop(UIView *root, UIView *host) {
             [effect.bottomAnchor constraintEqualToAnchor:backdrop.bottomAnchor]
         ]];
     }
-    effect.effect=blur?[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial]:nil;
+    effect.effect=[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
     effect.layer.cornerRadius=WTInputBool(@"wt.input.outerBlur.rounded",YES)?20:0;
     effect.layer.cornerCurve=kCACornerCurveContinuous; effect.clipsToBounds=YES;
 }
