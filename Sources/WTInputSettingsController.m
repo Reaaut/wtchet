@@ -15,7 +15,8 @@ static NSString * const kGlowColor = @"wt.input.glow.color";
 static NSString * const kBlur = @"wt.input.blur.enabled";
 static NSString * const kOffset = @"wt.input.offsetY";
 static NSString * const kIconColor = @"wt.input.icon.color";
-static NSString * const kMenuTheme = @"wt.input.jelly.theme"; 
+static NSString * const kMenuTheme = @"wt.input.jelly.theme";
+static NSString * const kFade = @"wt.input.fade.enabled";
 static void WTPostInputSettingsChanged(void) {
     [[NSNotificationCenter defaultCenter] postNotificationName:@"wt.input.settings.changed" object:nil];
 }
@@ -133,7 +134,11 @@ static void WTPostInputSettingsChanged(void) {
     [self addPanel:base content:baseRows inset:0];
 
     [baseRows addArrangedSubview:[self switchRow:@"输入栏磨砂背景" detail:@"使用系统薄磨砂材质" key:kBlur fallback:YES]];
+    [baseRows addArrangedSubview:[self switchRow:@"输入框渐隐背景" detail:@"在输入栏叠加柔和渐变层" key:kFade fallback:NO]];
     [baseRows addArrangedSubview:[self optionRow:@"按钮图标颜色" items:@[@"深色",@"绿色",@"白色"] key:kIconColor]];
+    [baseRows addArrangedSubview:[self disclosureRow:@"发送键颜色" detail:@"自定义发送按钮颜色" action:@selector(chooseSendColor)]];
+    [baseRows addArrangedSubview:[self disclosureRow:@"输入光标颜色" detail:@"自定义输入光标颜色" action:@selector(chooseCursorColor)]];
+    [baseRows addArrangedSubview:[self disclosureRow:@"输入文字颜色" detail:@"自定义输入文字颜色" action:@selector(chooseTextColor)]];
     [baseRows addArrangedSubview:[self sliderRow:@"输入栏上下位置" detail:@"微调输入栏垂直位置" key:kOffset min:-20 max:20 fallback:0]];
      [self addHeading:@"样式预览"];
     UIVisualEffectView *sampleCard=[self panel]; UIStackView *sampleRows=[self verticalStack];
@@ -238,6 +243,27 @@ static void WTPostInputSettingsChanged(void) {
 - (void)showTGInfo {
     UIAlertController *a=[UIAlertController alertControllerWithTitle:@"TG 菜单" message:@"当前保留原生微信加号菜单的点击与展开逻辑。菜单外观增强将在后续版本接入。" preferredStyle:UIAlertControllerStyleAlert];
     [a addAction:[UIAlertAction actionWithTitle:@"知道了" style:UIAlertActionStyleDefault handler:nil]]; [self presentViewController:a animated:YES completion:nil];
+}
+- (void)chooseSendColor { [self chooseColorForKey:@"wt.input.send.color" title:@"发送键颜色"]; }
+- (void)chooseCursorColor { [self chooseColorForKey:@"wt.input.cursor.color" title:@"输入光标颜色"]; }
+- (void)chooseTextColor { [self chooseColorForKey:@"wt.input.text.color" title:@"输入文字颜色"]; }
+- (void)chooseColorForKey:(NSString *)key title:(NSString *)title {
+    UIAlertController *a=[UIAlertController alertControllerWithTitle:title message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+    NSArray *names=@[@"系统绿",@"冰蓝",@"紫色",@"黑色",@"白色",@"灰色"];
+    NSArray *values=@[@"green",@"blue",@"purple",@"black",@"white",@"gray"];
+    for (NSUInteger i=0;i<names.count;i++) {
+        NSString *name=names[i], *value=values[i];
+        [a addAction:[UIAlertAction actionWithTitle:name style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+            [NSUserDefaults.standardUserDefaults setObject:value forKey:key];
+            WTPostInputSettingsChanged();
+        }]];
+    }
+    [a addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
+    if (a.popoverPresentationController) {
+        a.popoverPresentationController.sourceView=self.view;
+        a.popoverPresentationController.sourceRect=CGRectMake(CGRectGetMidX(self.view.bounds),CGRectGetMidY(self.view.bounds),1,1);
+    }
+    [self presentViewController:a animated:YES completion:nil];
 }
 - (void)chooseGlowColor {
     UIAlertController *a=[UIAlertController alertControllerWithTitle:@"炫光颜色" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
