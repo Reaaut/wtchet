@@ -29,11 +29,12 @@ static UIView *WTFindComposerContainer(UIView *root) {
     return nil;
 }
 static void WTApplyChatInputGlass(UIView *root) {
-    if (!NSThread.isMainThread || !root || !WTInputBool(@"wt.input.enabled", YES)) return;
+    if (!NSThread.isMainThread || !root || !WTInputBool(@"wt.global.enabled", YES) || !WTInputBool(@"wt.input.enabled", YES)) return;
     UIView *host = WTFindComposerContainer(root);
     if (!host) return;
     NSInteger style = [NSUserDefaults.standardUserDefaults integerForKey:@"wt.input.preview.style"];
-    CGFloat radius = style == 2 ? 17.0 : (style == 1 ? 29.0 : 23.0);
+    BOOL smsMode = WTInputBool(@"wt.input.sms.enabled", NO);
+    CGFloat radius = smsMode ? 18.0 : (style == 2 ? 17.0 : (style == 1 ? 29.0 : 23.0));
     UIVisualEffectView *glass = (UIVisualEffectView *)[host viewWithTag:WTInputGlassTag];
     if (!glass) {
         glass = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial]];
@@ -66,14 +67,22 @@ static void WTApplyChatInputGlass(UIView *root) {
             editor.backgroundColor = UIColor.clearColor;
             editor.layer.cornerRadius = style == 2 ? 16 : (style == 1 ? 24 : 20);
         }
+        if ([v isKindOfClass:UILabel.class] && WTInputBool(@"wt.input.placeholder.enabled", NO)) {
+            UILabel *label = (UILabel *)v;
+            if ([label.text containsString:@"发送消息"] || [label.text containsString:@"输入"]) {
+                label.text = [NSUserDefaults.standardUserDefaults stringForKey:@"wt.input.placeholder.text"] ?: @"发送消息";
+            }
+        }
         if ([v isKindOfClass:UIButton.class]) {
             UIButton *button = (UIButton *)v;
+            NSString *accessibility = [[(button.accessibilityLabel ?: @"") lowercaseString] stringByAppendingString:(button.currentTitle ?: @"")];
+            if (WTInputBool(@"wt.input.sms.hideEmoji", NO) && ([accessibility containsString:@"表情"] || [accessibility containsString:@"emoji"])) button.hidden = YES;
             button.tintColor = [UIColor colorWithWhite:0.12 alpha:1];
             button.layer.cornerCurve = kCACornerCurveContinuous;
-            button.layer.cornerRadius = style == 2 ? 18 : 22;
+            button.layer.cornerRadius = smsMode ? 16 : (style == 2 ? 18 : 22);
             button.layer.borderWidth = 0.65;
             button.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.55].CGColor;
-            button.backgroundColor = [UIColor colorWithWhite:1 alpha:0.20];
+            button.backgroundColor = [UIColor colorWithWhite:1 alpha:WTInputBool(@"wt.input.jelly.menu", NO) ? 0.42 : 0.20];
             button.clipsToBounds = YES;
         }
         for (UIView *child in v.subviews) [nodes addObject:child];
