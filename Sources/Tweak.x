@@ -79,15 +79,23 @@ static const NSInteger WTInputMethodGlassTag = 0x5754494D;
 static UIView *WTFindComposerBackdrop(UIView *root, UIView *host) {
     if(!root || !host) return nil;
     CGFloat rw=CGRectGetWidth(root.bounds), rh=CGRectGetHeight(root.bounds);
-    // Walk from the editor outward and stop at the first narrow bottom tray.
-    // Never fall back to an arbitrary ancestor: that can be the whole chat page.
+    UIView *best=nil;
+    CGFloat bestArea=0;
+    // Select the OUTER bottom composer tray, not the text editor capsule.
+    // Only accept a full-width, shallow view physically located at screen bottom.
     for(UIView *v=host.superview;v && v!=root;v=v.superview) {
         CGRect f=[v convertRect:v.bounds toView:root];
         CGFloat w=CGRectGetWidth(f), h=CGRectGetHeight(f);
-        BOOL bottom=CGRectGetMaxY(f)>=rh-90 && CGRectGetMinY(f)>=rh-460;
-        if(w>=rw*0.88 && h>=44 && h<=190 && bottom) return v;
+        CGFloat minY=CGRectGetMinY(f), maxY=CGRectGetMaxY(f);
+        BOOL fullWidth=(w>=rw*0.88 && CGRectGetMinX(f)<=rw*0.08);
+        BOOL trayHeight=(h>=58 && h<=190);
+        BOOL bottomAnchored=(maxY>=rh-55 && minY>=rh-260);
+        if(fullWidth && trayHeight && bottomAnchored) {
+            CGFloat area=w*h;
+            if(area>bestArea) { best=v; bestArea=area; }
+        }
     }
-    return nil;
+    return best;
 }
 static void WTApplyComposerBackdrop(UIView *root, UIView *host) {
     BOOL master=WTInputBool(@"wt.global.enabled",YES) && WTInputBool(@"wt.input.enabled",YES);
@@ -140,6 +148,15 @@ static void WTApplyInputMethodArea(UIView *root) {
                      [name containsString:@"inputmode"] || [name containsString:@"imeaccessory"] ||
                      [name containsString:@"keyboardaccessory"]);
         if(target && v!=root) {
+            CGRect frame=[v convertRect:v.bounds toView:root];
+            CGFloat rw=CGRectGetWidth(root.bounds), rh=CGRectGetHeight(root.bounds);
+            BOOL accessoryBounds=(CGRectGetWidth(frame)>=rw*0.45 &&
+                                  CGRectGetHeight(frame)<=150 &&
+                                  CGRectGetMaxY(frame)>=rh-260);
+            if(!accessoryBounds) {
+                for(UIView *child in v.subviews) [stack addObject:child];
+                continue;
+            }
             BOOL enabled=WTInputBool(@"wt.global.enabled",YES) && WTInputBool(@"wt.input.enabled",YES) && WTInputBool(@"wt.input.method.enabled",YES);
             BOOL hideBG=enabled && WTInputBool(@"wt.input.method.hideBackground",YES);
             BOOL blur=enabled && WTInputBool(@"wt.input.method.blur",YES);
