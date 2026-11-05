@@ -8,25 +8,60 @@ static BOOL WTInputBool(NSString *key, BOOL fallback) {
     id value = [NSUserDefaults.standardUserDefaults objectForKey:key];
     return value ? [value boolValue] : fallback;
 }
+static BOOL WTClassLooksLikeComposer(UIView *view) {
+    NSString *name = NSStringFromClass(view.class).lowercaseString;
+    return [name containsString:@"inputtool"] || [name containsString:@"inputbar"] ||
+           [name containsString:@"chatinput"] || [name containsString:@"composer"] ||
+           [name containsString:@"inputeditor"] || [name containsString:@"mmtextview"];
+}
+static BOOL WTIsTextEditor(UIView *view) {
+    if ([view isKindOfClass:UITextView.class] || [view isKindOfClass:UITextField.class]) return YES;
+    NSString *name = NSStringFromClass(view.class).lowercaseString;
+    return ([name containsString:@"textview"] || [name containsString:@"inputtext"]) &&
+           ![name containsString:@"label"];
+}
 static UIView *WTFindComposerContainer(UIView *root) {
+    if (!root) return nil;
     NSMutableArray<UIView *> *stack = [NSMutableArray arrayWithObject:root];
-    UITextView *textView = nil;
+    NSMutableArray<UIView *> *editors = [NSMutableArray array];
+    NSMutableArray<UIView *> *namedHosts = [NSMutableArray array];
     NSUInteger visited = 0;
-    while (stack.count && visited++ < 700) {
-        UIView *v = stack.lastObject; [stack removeLastObject];
-        if ([v isKindOfClass:UITextView.class] && !v.hidden && v.alpha > 0.05) { textView = (UITextView *)v; break; }
+    while (stack.count && visited++ < 1400) {
+        UIView *v = stack.lastObject;
+        [stack removeLastObject];
+        if (WTIsTextEditor(v) && !v.hidden && v.alpha > 0.05) [editors addObject:v];
+        if (WTClassLooksLikeComposer(v)) [namedHosts addObject:v];
         for (UIView *child in v.subviews) [stack addObject:child];
     }
-    if (!textView) return nil;
-    UIView *candidate = textView.superview;
-    while (candidate && candidate != root) {
-        CGRect f = [candidate convertRect:candidate.bounds toView:root];
-        if (CGRectGetWidth(f) >= CGRectGetWidth(root.bounds) * 0.62 &&
-            CGRectGetHeight(f) >= 38 && CGRectGetHeight(f) <= 180 &&
-            CGRectGetMaxY(f) >= CGRectGetHeight(root.bounds) - 190) return candidate;
-        candidate = candidate.superview;
+    CGFloat rootHeight = CGRectGetHeight(root.bounds);
+    CGFloat rootWidth = CGRectGetWidth(root.bounds);
+    UIView *best = nil;
+    CGFloat bestScore = -CGFLOAT_MAX;
+    for (UIView *editor in editors) {
+        UIView *candidate = editor;
+        while (candidate && candidate != root) {
+            CGRect frame = [candidate convertRect:candidate.bounds toView:root];
+            CGFloat width = CGRectGetWidth(frame), height = CGRectGetHeight(frame);
+            if (width >= rootWidth * 0.58 && height >= 34 && height <= 210 &&
+                CGRectGetMaxY(frame) >= rootHeight - 280) {
+                CGFloat score = 100.0 - fabs(rootHeight - CGRectGetMaxY(frame));
+                if (WTClassLooksLikeComposer(candidate)) score += 180.0;
+                if (width >= rootWidth * 0.78) score += 25.0;
+                if (score > bestScore) { bestScore = score; best = candidate; }
+            }
+            candidate = candidate.superview;
+        }
     }
-    return nil;
+    if (best) return best;
+    for (UIView *candidate in namedHosts) {
+        CGRect frame = [candidate convertRect:candidate.bounds toView:root];
+        CGFloat width = CGRectGetWidth(frame), height = CGRectGetHeight(frame);
+        if (width < rootWidth * 0.58 || height < 34 || height > 210 ||
+            CGRectGetMaxY(frame) < rootHeight - 280) continue;
+        CGFloat score = 150.0 - fabs(rootHeight - CGRectGetMaxY(frame));
+        if (score > bestScore) { bestScore = score; best = candidate; }
+    }
+    return best;
 }
 static void WTUpdateGlowBorder(UIVisualEffectView *glass, CGFloat radius) {
     NSString *layerName = @"wtchet.glow.border";
@@ -80,12 +115,22 @@ static void WTApplyChatInputGlass(UIView *root) {
     UIView *host = WTFindComposerContainer(root);
     if (!host) return;
     BOOL enabled = WTInputBool(@"wt.global.enabled", YES) && WTInputBool(@"wt.input.enabled", YES);
-    if (!enabled) { [[host viewWithTag:WTInputGlassTag] removeFromSuperview]; return; }
     host.backgroundColor = UIColor.clearColor;
     NSInteger style = [NSUserDefaults.standardUserDefaults integerForKey:@"wt.input.preview.style"];
     BOOL smsMode = WTInputBool(@"wt.input.sms.enabled", NO);
     NSInteger smsSize = [NSUserDefaults.standardUserDefaults integerForKey:@"wt.input.sms.size"];
     CGFloat radius = smsMode ? (smsSize == 1 ? 13.0 : 20.0) : (style == 2 ? 17.0 : (style == 1 ? 29.0 : 23.0));
+    if (!enabled) {
+        [[host viewWithTag:WTInputGlassTag] removeFromSuperview];
+        host.layer.borderWidth = 0;
+        host.backgroundColor = UIColor.clearColor;
+        return;
+    }
+    host.layer.cornerRadius = radius;
+    host.layer.cornerCurve = kCACornerCurveContinuous;
+    host.clipsToBounds = YES;
+    CGFloat verticalOffset = [NSUserDefaults.standardUserDefaults floatForKey:@"wt.input.offsetY"];
+    host.transform = CGAffineTransformMakeTranslation(0, verticalOffset);
     UIVisualEffectView *glass = (UIVisualEffectView *)[host viewWithTag:WTInputGlassTag];
     if (!glass) {
         glass = [[UIVisualEffectView alloc] initWithEffect:WTInputBool(@"wt.glass.enabled", YES) ? [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial] : nil];
@@ -129,13 +174,19 @@ static void WTApplyChatInputGlass(UIView *root) {
             UIButton *button = (UIButton *)v;
             NSString *accessibility = [[(button.accessibilityLabel ?: @"") lowercaseString] stringByAppendingString:(button.currentTitle ?: @"")];
             if (WTInputBool(@"wt.input.sms.hideEmoji", NO) && ([accessibility containsString:@"表情"] || [accessibility containsString:@"emoji"])) button.hidden = YES;
-            button.tintColor = [UIColor colorWithWhite:0.12 alpha:1];
+            NSString *iconColorName = [NSUserDefaults.standardUserDefaults stringForKey:@"wt.input.icon.color"] ?: @"dark";
+            button.tintColor = [iconColorName isEqualToString:@"green"] ? [UIColor colorWithRed:0.02 green:0.53 blue:0.30 alpha:1] :
+                               ([iconColorName isEqualToString:@"white"] ? UIColor.whiteColor : [UIColor colorWithWhite:0.12 alpha:1]);
             button.layer.cornerCurve = kCACornerCurveContinuous;
             button.layer.cornerRadius = smsMode ? (smsSize == 1 ? 13 : 18) : (style == 2 ? 18 : 22);
             button.layer.borderWidth = 0.65;
             button.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.55].CGColor;
             BOOL isPlus = [accessibility containsString:@"plus"] || [accessibility containsString:@"添加"] || [accessibility containsString:@"更多"];
-            button.backgroundColor = [UIColor colorWithWhite:1 alpha:(isPlus && WTInputBool(@"wt.input.jelly.menu", NO)) ? 0.42 : 0.20];
+            BOOL jelly = WTInputBool(@"wt.input.jelly.menu", NO);
+            NSString *menuTheme = [NSUserDefaults.standardUserDefaults stringForKey:@"wt.input.jelly.theme"] ?: @"system";
+            UIColor *buttonFill = [menuTheme isEqualToString:@"dark"] ? [UIColor colorWithWhite:0.12 alpha:0.72] :
+                                  ([menuTheme isEqualToString:@"light"] ? [UIColor colorWithWhite:1 alpha:0.82] : [UIColor colorWithWhite:1 alpha:0.20]);
+            button.backgroundColor = (isPlus && jelly) ? buttonFill : [UIColor colorWithWhite:1 alpha:0.20];
             if (smsMode && button.currentImage) {
                 NSInteger iconWeight = [NSUserDefaults.standardUserDefaults integerForKey:@"wt.input.sms.icon"];
                 UIImageSymbolWeight weight = iconWeight == 1 ? UIImageSymbolWeightBold : (iconWeight == 2 ? UIImageSymbolWeightLight : UIImageSymbolWeightRegular);
@@ -143,6 +194,12 @@ static void WTApplyChatInputGlass(UIView *root) {
                 [button setPreferredSymbolConfiguration:configuration forImageInState:UIControlStateNormal];
             }
             button.clipsToBounds = YES;
+        }
+        if ([v isKindOfClass:UILabel.class] && WTInputBool(@"wt.input.placeholder.enabled", NO)) {
+            UILabel *label = (UILabel *)v;
+            if ([label.text containsString:@"发送消息"] || [label.text containsString:@"输入"]) {
+                label.text = [NSUserDefaults.standardUserDefaults stringForKey:@"wt.input.placeholder.text"] ?: @"发送消息";
+            }
         }
         for (UIView *child in v.subviews) [nodes addObject:child];
     }
