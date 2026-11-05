@@ -49,12 +49,44 @@ static void WTApplyChatInputGlass(UIView *root) {
         ]];
         host.backgroundColor = UIColor.clearColor;
     }
-    // Keep WeChat's original clipping and hit-testing behavior intact.
+    // Keep WeChat's original container clipping and hit-testing intact.
     glass.layer.cornerRadius = radius;
     glass.layer.cornerCurve = kCACornerCurveContinuous;
     glass.clipsToBounds = YES;
-    glass.layer.borderWidth = 0.7;
-    glass.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.42].CGColor;
+    glass.layer.borderWidth = 0.8;
+    glass.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.62].CGColor;
+
+    UITextView *editor = nil;
+    NSMutableArray<UIView *> *nodes = [NSMutableArray arrayWithObject:host];
+    NSUInteger scanned = 0;
+    while (nodes.count && scanned++ < 240) {
+        UIView *v = nodes.lastObject; [nodes removeLastObject];
+        if ([v isKindOfClass:UITextView.class]) {
+            editor = (UITextView *)v;
+            editor.backgroundColor = UIColor.clearColor;
+            editor.layer.cornerRadius = style == 2 ? 16 : (style == 1 ? 24 : 20);
+        }
+        if ([v isKindOfClass:UIButton.class]) {
+            UIButton *button = (UIButton *)v;
+            button.tintColor = [UIColor colorWithWhite:0.12 alpha:1];
+            button.layer.cornerCurve = kCACornerCurveContinuous;
+            button.layer.cornerRadius = style == 2 ? 18 : 22;
+            button.layer.borderWidth = 0.65;
+            button.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.55].CGColor;
+            button.backgroundColor = [UIColor colorWithWhite:1 alpha:0.20];
+            button.clipsToBounds = YES;
+        }
+        for (UIView *child in v.subviews) [nodes addObject:child];
+    }
+    BOOL glow = WTInputBool(@"wt.input.glow.enabled", NO);
+    NSString *glowColor = [NSUserDefaults.standardUserDefaults stringForKey:@"wt.input.glow.color"] ?: @"green";
+    UIColor *shadow = [glowColor isEqualToString:@"blue"] ? [UIColor colorWithRed:0.20 green:0.62 blue:1 alpha:1] :
+                      ([glowColor isEqualToString:@"purple"] ? [UIColor colorWithRed:0.62 green:0.35 blue:1 alpha:1] :
+                      ([glowColor isEqualToString:@"white"] ? UIColor.whiteColor : [UIColor colorWithRed:0.08 green:0.72 blue:0.43 alpha:1]));
+    glass.layer.shadowColor = shadow.CGColor;
+    glass.layer.shadowOpacity = glow ? 0.48 : 0.0;
+    glass.layer.shadowRadius = glow ? 9.0 : 0.0;
+    glass.layer.shadowOffset = CGSizeZero;
 }
 
 static UIViewController *WTTopController(UIViewController *controller) {
