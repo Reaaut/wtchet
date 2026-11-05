@@ -332,9 +332,10 @@ static void WTApplyChatInputGlass(UIView *root) {
     if(last && now-last.doubleValue<0.10) return;
     objc_setAssociatedObject(root,&WTLastComposerApplyTimeKey,@(now),OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     BOOL enabled = WTInputBool(@"wt.global.enabled", YES) && WTInputBool(@"wt.input.enabled", YES);
+    WTApplyInputMethodArea(root);
     UIView *host = WTFindComposerContainer(root);
     if (!host) {
-        if(!enabled) { WTRestoreComposerTree(root); WTApplyInputMethodArea(root); }
+        if(!enabled) { WTRestoreComposerTree(root); }
         return;
     }
     if (!objc_getAssociatedObject(host, &WTOriginalHostBackgroundKey)) {
@@ -351,11 +352,9 @@ static void WTApplyChatInputGlass(UIView *root) {
     if (!enabled) {
         WTRestoreComposerAncestors(root,host);
         WTRestoreComposerChildren(host);
-        WTApplyInputMethodArea(root);
         return;
     }
     WTApplyComposerBackdrop(root,host);
-    WTApplyInputMethodArea(root);
     host.backgroundColor = UIColor.clearColor;
     host.layer.cornerRadius = radius;
     host.layer.cornerCurve = kCACornerCurveContinuous;
