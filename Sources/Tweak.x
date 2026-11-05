@@ -84,8 +84,9 @@ static UIView *WTFindComposerBackdrop(UIView *root, UIView *host) {
 static void WTApplyComposerBackdrop(UIView *root, UIView *host) {
     UIView *backdrop=WTFindComposerBackdrop(root,host);
     if (!backdrop) return;
-    BOOL hide=WTInputBool(@"wt.input.nativeBackground.hide",YES);
-    BOOL blur=WTInputBool(@"wt.input.outerBlur.enabled",YES);
+    BOOL master=WTInputBool(@"wt.input.enabled",YES);
+    BOOL hide=master && WTInputBool(@"wt.input.nativeBackground.hide",YES);
+    BOOL blur=master && WTInputBool(@"wt.input.outerBlur.enabled",YES);
     if (!objc_getAssociatedObject(backdrop,&WTOriginalBackdropBackgroundKey)) {
         id original=backdrop.backgroundColor ?: (id)NSNull.null;
         objc_setAssociatedObject(backdrop,&WTOriginalBackdropBackgroundKey,original,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -141,13 +142,12 @@ static void WTApplyInputMethodArea(UIView *root) {
                     [glass.bottomAnchor constraintEqualToAnchor:v.bottomAnchor]
                 ]];
             }
-            if(!enabled) {
-                [glass removeFromSuperview];
-                id original=objc_getAssociatedObject(v,&WTOriginalIMEBackgroundKey);
-                v.backgroundColor=(original==NSNull.null)?nil:original;
+            if(!blurMethod) [glass removeFromSuperview];
+            if(glass) {
+                glass.effect=blurMethod?[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial]:nil;
+                glass.layer.cornerRadius=WTInputBool(@"wt.input.method.rounded",YES)?16:0;
+                glass.clipsToBounds=YES;
             }
-            glass.layer.cornerRadius=WTInputBool(@"wt.input.method.rounded",YES)?16:0;
-            glass.clipsToBounds=YES;
         }
         for(UIView *child in v.subviews) [stack addObject:child];
     }
@@ -235,6 +235,8 @@ static void WTApplyChatInputGlass(UIView *root) {
     NSInteger smsSize = [NSUserDefaults.standardUserDefaults integerForKey:@"wt.input.sms.size"];
     CGFloat radius = smsMode ? (smsSize == 1 ? 13.0 : 20.0) : (style == 2 ? 17.0 : (style == 1 ? 29.0 : 23.0));
     if (!enabled) {
+        WTApplyComposerBackdrop(root,host);
+        WTApplyInputMethodArea(root);
         [[host viewWithTag:WTInputGlassTag] removeFromSuperview];
         id originalBackground = objc_getAssociatedObject(host, &WTOriginalHostBackgroundKey);
         host.backgroundColor = (originalBackground == NSNull.null) ? nil : originalBackground;
