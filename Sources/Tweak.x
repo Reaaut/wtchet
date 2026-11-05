@@ -12,6 +12,7 @@ static char WTOriginalIMEBackgroundKey;
 static char WTOriginalButtonStyleKey;
 static char WTOriginalEditorStyleKey;
 static char WTOriginalHostLayerStyleKey;
+static char WTLastComposerApplyTimeKey;
 static BOOL WTInputBool(NSString *key, BOOL fallback) {
     id value = [NSUserDefaults.standardUserDefaults objectForKey:key];
     return value ? [value boolValue] : fallback;
@@ -297,6 +298,10 @@ static void WTRestoreComposerAncestors(UIView *root, UIView *host) {
 }
 static void WTApplyChatInputGlass(UIView *root) {
     if (!NSThread.isMainThread || !root) return;
+    CFTimeInterval now=CACurrentMediaTime();
+    NSNumber *last=objc_getAssociatedObject(root,&WTLastComposerApplyTimeKey);
+    if(last && now-last.doubleValue<0.10) return;
+    objc_setAssociatedObject(root,&WTLastComposerApplyTimeKey,@(now),OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     UIView *host = WTFindComposerContainer(root);
     if (!host) return;
     BOOL enabled = WTInputBool(@"wt.global.enabled", YES) && WTInputBool(@"wt.input.enabled", YES);
