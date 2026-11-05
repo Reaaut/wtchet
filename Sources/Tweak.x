@@ -14,6 +14,7 @@ static char WTOriginalButtonStyleKey;
 static char WTOriginalEditorStyleKey;
 static char WTOriginalHostLayerStyleKey;
 static char WTLastComposerApplyTimeKey;
+static char WTOriginalAncestorEffectKey;
 static BOOL WTInputBool(NSString *key, BOOL fallback) {
     id value = [NSUserDefaults.standardUserDefaults objectForKey:key];
     return value ? [value boolValue] : fallback;
@@ -77,39 +78,49 @@ static const NSInteger WTComposerBackdropTag = 0x57544247;
 static const NSInteger WTInputMethodGlassTag = 0x5754494D;
 static UIView *WTFindComposerBackdrop(UIView *root, UIView *host) {
     CGFloat rw=CGRectGetWidth(root.bounds), rh=CGRectGetHeight(root.bounds);
-    UIView *best=nil;
-    for (UIView *v=host.superview; v && v!=root; v=v.superview) {
+    UIView *best=nil; CGFloat bestScore=-CGFLOAT_MAX;
+    for(UIView *v=host.superview;v;v=v.superview) {
         CGRect f=[v convertRect:v.bounds toView:root];
         CGFloat w=CGRectGetWidth(f), h=CGRectGetHeight(f);
-        if (w>=rw*0.90 && h>=65 && h<=360 && CGRectGetMaxY(f)>=rh-90 &&
-            CGRectGetMinY(f)>=rh-390) best=v;
+        if(w>=rw*0.88 && h>=48 && h<=420 && CGRectGetMaxY(f)>=rh-100 && CGRectGetMinY(f)>=rh-440) {
+            CGFloat score=200.0-fabs(rh-CGRectGetMaxY(f))-fabs(h-125)*0.15;
+            if(score>bestScore){bestScore=score;best=v;}
+        }
+        if(v==root) break;
     }
-    return best;
+    return best ?: host.superview;
 }
 static void WTApplyComposerBackdrop(UIView *root, UIView *host) {
-    UIView *backdrop=WTFindComposerBackdrop(root,host);
-    if (!backdrop) return;
     BOOL master=WTInputBool(@"wt.global.enabled",YES) && WTInputBool(@"wt.input.enabled",YES);
     BOOL hide=master && WTInputBool(@"wt.input.nativeBackground.hide",YES);
     BOOL blur=master && WTInputBool(@"wt.input.outerBlur.enabled",YES);
-    for(UIView *v=host.superview; v; v=v.superview) {
+    UIView *backdrop=WTFindComposerBackdrop(root,host);
+    // The native tray can be several wrappers above the editor. Clear every
+    // wrapper up to the chat root so the chat wallpaper remains visible.
+    for(UIView *v=host.superview;v;v=v.superview) {
         if(!objc_getAssociatedObject(v,&WTOriginalBackdropBackgroundKey)) {
             id original=v.backgroundColor ?: (id)NSNull.null;
             objc_setAssociatedObject(v,&WTOriginalBackdropBackgroundKey,original,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         }
-        if(hide) v.backgroundColor=UIColor.clearColor;
-        else {
+        if([v isKindOfClass:UIVisualEffectView.class] && !objc_getAssociatedObject(v,&WTOriginalAncestorEffectKey)) {
+            UIVisualEffect *effect=((UIVisualEffectView *)v).effect;
+            objc_setAssociatedObject(v,&WTOriginalAncestorEffectKey,effect ?: (id)NSNull.null,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        }
+        if(hide) {
+            v.backgroundColor=UIColor.clearColor;
+            if([v isKindOfClass:UIVisualEffectView.class]) ((UIVisualEffectView *)v).effect=nil;
+        } else {
             id original=objc_getAssociatedObject(v,&WTOriginalBackdropBackgroundKey);
             v.backgroundColor=(original==NSNull.null)?nil:original;
+            id effect=objc_getAssociatedObject(v,&WTOriginalAncestorEffectKey);
+            if(effect) ((UIVisualEffectView *)v).effect=(effect==NSNull.null)?nil:effect;
         }
-        if(v==backdrop) break;
+        if(v==root) break;
     }
+    if(!backdrop) return;
     UIVisualEffectView *effect=(UIVisualEffectView *)[backdrop viewWithTag:WTComposerBackdropTag];
-    if (!blur) {
-        [effect removeFromSuperview];
-        return;
-    }
-    if (!effect) {
+    if(!blur) { [effect removeFromSuperview]; return; }
+    if(!effect) {
         effect=[[UIVisualEffectView alloc] initWithEffect:nil];
         effect.tag=WTComposerBackdropTag; effect.userInteractionEnabled=NO; effect.translatesAutoresizingMaskIntoConstraints=NO;
         [backdrop insertSubview:effect atIndex:0];
