@@ -529,6 +529,43 @@ static void WTShowSettings(void) {
 - (void)openSettings { WTShowSettings(); }
 @end
 
+
+static NSString *WTDescribeColor(UIColor *color) {
+    if(!color || color==UIColor.clearColor) return @"clear/nil";
+    CGFloat r=0,g=0,b=0,a=0;
+    if([color getRed:&r green:&g blue:&b alpha:&a])
+        return [NSString stringWithFormat:@"rgba(%.2f,%.2f,%.2f,%.2f)",r,g,b,a];
+    return [NSString stringWithFormat:@"%@",color];
+}
+static void WTCaptureInputHierarchy(void) {
+    NSMutableString *dump=[NSMutableString stringWithString:@"wtchet input hierarchy diagnostic (NO message text captured)\n"];
+    NSUInteger total=0;
+    for(UIWindow *window in UIApplication.sharedApplication.windows) {
+        if(window.hidden || window.alpha<0.05) continue;
+        [dump appendFormat:@"WINDOW %@ frame=%@\n",NSStringFromClass(window.class),NSStringFromCGRect(window.frame)];
+        NSMutableArray *stack=[NSMutableArray arrayWithObject:@{@"view":window,@"depth":@0}];
+        while(stack.count && total<1400) {
+            NSDictionary *node=stack.lastObject; [stack removeLastObject];
+            UIView *v=node[@"view"]; NSUInteger depth=[node[@"depth"] unsignedIntegerValue]; total++;
+            CGRect f=[v convertRect:v.bounds toView:window];
+            NSString *effect=@"none";
+            if([v isKindOfClass:UIVisualEffectView.class]) {
+                UIVisualEffect *e=((UIVisualEffectView *)v).effect;
+                effect=e?NSStringFromClass(e.class):@"nil";
+            }
+            NSString *identifier=v.accessibilityIdentifier ?: @"";
+            [dump appendFormat:@"%@%@ frame=%@ hidden=%d alpha=%.2f bg=%@ opaque=%d effect=%@ tag=%ld id=%@\n",
+             [@"" stringByPaddingToLength:MIN(depth*2,32) withString:@" " startingAtIndex:0],
+             NSStringFromClass(v.class),NSStringFromCGRect(f),v.hidden,v.alpha,
+             WTDescribeColor(v.backgroundColor),v.opaque,effect,(long)v.tag,identifier];
+            for(UIView *child in v.subviews.reverseObjectEnumerator)
+                [stack addObject:@{@"view":child,@"depth":@(depth+1)}];
+        }
+    }
+    [dump appendFormat:@"\nTOTAL VIEWS: %lu\n",(unsigned long)total];
+    [NSUserDefaults.standardUserDefaults setObject:dump forKey:@"wt.input.hierarchy.lastCapture"];
+    [NSUserDefaults.standardUserDefaults synchronize];
+}
 static void WTInstallLauncher(void) {
     if (![NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.tencent.xin"]) return;
     UIWindow *window = WTKeyWindow();
@@ -612,6 +649,7 @@ static void WTInstallLauncher(void) {
     @autoreleasepool {
         if ([NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.tencent.xin"]) {
             NSLog(@"[wtchet] composer styling runtime loaded");
+            [[NSNotificationCenter defaultCenter] addObserverForName:@"wt.input.hierarchy.capture" object:nil queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification *note) { WTCaptureInputHierarchy(); }];
             [[NSNotificationCenter defaultCenter] addObserverForName:@"wt.input.settings.changed" object:nil queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification *note) {
                 UIWindow *window = WTKeyWindow();
                 UIViewController *root = window.rootViewController;
