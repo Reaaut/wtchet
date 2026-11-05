@@ -12,6 +12,13 @@ static NSString * const kSMSIcon = @"wt.input.sms.icon";
 static NSString * const kGlow = @"wt.input.glow.enabled";
 static NSString * const kGlowSpeed = @"wt.input.glow.speed";
 static NSString * const kGlowColor = @"wt.input.glow.color";
+static NSString * const kBlur = @"wt.input.blur.enabled";
+static NSString * const kOffset = @"wt.input.offsetY";
+static NSString * const kIconColor = @"wt.input.icon.color";
+static NSString * const kMenuTheme = @"wt.input.jelly.theme"; 
+static void WTPostInputSettingsChanged(void) {
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"wt.input.settings.changed" object:nil];
+}
 
 @interface WTInputSettingsController ()
 @property(nonatomic,strong) UIScrollView *scroll;
@@ -125,6 +132,9 @@ static NSString * const kGlowColor = @"wt.input.glow.color";
     [baseRows addArrangedSubview:[self disclosureRow:@"展开" detail:@"输入框样式、布局选项" action:@selector(scrollToStyle)]];
     [self addPanel:base content:baseRows inset:0];
 
+    [baseRows addArrangedSubview:[self switchRow:@"输入栏磨砂背景" detail:@"使用系统薄磨砂材质" key:kBlur fallback:YES]];
+    [baseRows addArrangedSubview:[self optionRow:@"按钮图标颜色" items:@[@"深色",@"绿色",@"白色"] key:kIconColor]];
+    [baseRows addArrangedSubview:[self sliderRow:@"输入栏上下位置" detail:@"微调输入栏垂直位置" key:kOffset min:-20 max:20 fallback:0]];
     [self addHeading:@"样式预览"];
     UIVisualEffectView *sampleCard=[self panel]; UIStackView *sampleRows=[self verticalStack];
     self.style=[[UISegmentedControl alloc] initWithItems:@[@"简约",@"大胶囊",@"小胶囊"]];
@@ -139,7 +149,7 @@ static NSString * const kGlowColor = @"wt.input.glow.color";
     [self addHeading:@"TG 菜单"];
     UIVisualEffectView *tg=[self panel]; UIStackView *tgRows=[self verticalStack];
     [tgRows addArrangedSubview:[self switchRow:@"TG 菜单" detail:@"启用胶囊式附加菜单外观" key:kJelly fallback:NO]];
-    [tgRows addArrangedSubview:[self disclosureRow:@"展开" detail:@"菜单图标与布局选项" action:@selector(showTGInfo)]];
+    [tgRows addArrangedSubview:[self optionRow:@"TG 菜单材质" items:@[@"系统",@"浅色",@"深色"] key:kMenuTheme]];
     [self addPanel:tg content:tgRows inset:0];
 
     [self addHeading:@"输入框炫光"];
@@ -214,10 +224,10 @@ static NSString * const kGlowColor = @"wt.input.glow.color";
     [NSLayoutConstraint activateConstraints:@[[l.leadingAnchor constraintEqualToAnchor:row.leadingAnchor],[l.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],[seg.trailingAnchor constraintEqualToAnchor:row.trailingAnchor],[seg.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],[seg.widthAnchor constraintEqualToConstant:150],[l.trailingAnchor constraintLessThanOrEqualToAnchor:seg.leadingAnchor constant:-8]]];
     return row;
 }
-- (void)switchChanged:(UISwitch *)s { [NSUserDefaults.standardUserDefaults setBool:s.isOn forKey:s.accessibilityIdentifier]; }
-- (void)segmentChanged:(UISegmentedControl *)s { [NSUserDefaults.standardUserDefaults setInteger:s.selectedSegmentIndex forKey:s.accessibilityIdentifier]; }
-- (void)sliderChanged:(UISlider *)s { [NSUserDefaults.standardUserDefaults setFloat:s.value forKey:s.accessibilityIdentifier]; }
-- (void)styleChanged:(UISegmentedControl *)s { [NSUserDefaults.standardUserDefaults setInteger:s.selectedSegmentIndex forKey:kStyle]; [self applyPreview]; }
+- (void)switchChanged:(UISwitch *)s { [NSUserDefaults.standardUserDefaults setBool:s.isOn forKey:s.accessibilityIdentifier]; WTPostInputSettingsChanged(); }
+- (void)segmentChanged:(UISegmentedControl *)s { [NSUserDefaults.standardUserDefaults setInteger:s.selectedSegmentIndex forKey:s.accessibilityIdentifier]; WTPostInputSettingsChanged(); }
+- (void)sliderChanged:(UISlider *)s { [NSUserDefaults.standardUserDefaults setFloat:s.value forKey:s.accessibilityIdentifier]; WTPostInputSettingsChanged(); }
+- (void)styleChanged:(UISegmentedControl *)s { [NSUserDefaults.standardUserDefaults setInteger:s.selectedSegmentIndex forKey:kStyle]; [self applyPreview]; WTPostInputSettingsChanged(); }
 - (void)applyPreview {
     NSInteger style=[NSUserDefaults.standardUserDefaults integerForKey:kStyle];
     CGFloat radius=style==1?29:(style==2?18:24);
@@ -233,7 +243,7 @@ static NSString * const kGlowColor = @"wt.input.glow.color";
     UIAlertController *a=[UIAlertController alertControllerWithTitle:@"炫光颜色" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
     NSArray *names=@[@"系统绿",@"冰蓝",@"紫色",@"白色"];
     NSArray *values=@[@"green",@"blue",@"purple",@"white"];
-    for (NSUInteger i=0;i<names.count;i++) { NSString *n=names[i], *v=values[i]; [a addAction:[UIAlertAction actionWithTitle:n style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){ [NSUserDefaults.standardUserDefaults setObject:v forKey:kGlowColor]; }]]; }
+    for (NSUInteger i=0;i<names.count;i++) { NSString *n=names[i], *v=values[i]; [a addAction:[UIAlertAction actionWithTitle:n style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){ [NSUserDefaults.standardUserDefaults setObject:v forKey:kGlowColor]; WTPostInputSettingsChanged(); }]]; }
     [a addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
     if (a.popoverPresentationController) {
         a.popoverPresentationController.sourceView = self.view;
@@ -245,7 +255,7 @@ static NSString * const kGlowColor = @"wt.input.glow.color";
     UIAlertController *a=[UIAlertController alertControllerWithTitle:@"占位符内容" message:@"设置聊天输入框中的提示文字" preferredStyle:UIAlertControllerStyleAlert];
     [a addTextFieldWithConfigurationHandler:^(UITextField *f){ f.text=[NSUserDefaults.standardUserDefaults stringForKey:kPlaceholder] ?: @"发送消息"; }];
     [a addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
-    [a addAction:[UIAlertAction actionWithTitle:@"保存" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){ NSString *v=a.textFields.firstObject.text ?: @"发送消息"; [NSUserDefaults.standardUserDefaults setObject:v forKey:kPlaceholder]; self.previewPlaceholder.text=v; }]];
+    [a addAction:[UIAlertAction actionWithTitle:@"保存" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){ NSString *v=a.textFields.firstObject.text ?: @"发送消息"; [NSUserDefaults.standardUserDefaults setObject:v forKey:kPlaceholder]; self.previewPlaceholder.text=v; WTPostInputSettingsChanged(); }]];
     [self presentViewController:a animated:YES completion:nil];
 }
 - (void)showEffect {
